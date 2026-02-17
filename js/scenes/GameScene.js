@@ -16,105 +16,85 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
-        try {
-            console.log('[GameScene] create() start');
-            this.enemiesData = this.cache.json.get('enemies');
+        this.enemiesData = this.cache.json.get('enemies');
 
-            // Camera and world bounds
-            this.physics.world.setBounds(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-            this.cameras.main.setBounds(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+        // Camera and world bounds
+        this.physics.world.setBounds(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+        this.cameras.main.setBounds(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
 
-            // Draw floor grid
-            console.log('[GameScene] createFloor');
-            this.createFloor();
+        // Draw floor grid
+        this.createFloor();
 
-            // Create players
-            console.log('[GameScene] creating players');
-            this.players = [];
-            this.activePlayerIndex = 0;
-            this.partyData.forEach((charData, i) => {
-                const x = FIELD_WIDTH / 2 + (i - 1) * 50;
-                const y = FIELD_HEIGHT / 2 + 50;
-                console.log(`[GameScene] Player ${i}: ${charData.spriteKey}`);
-                const player = new Player(this, x, y, charData);
-                player.setAsActive(i === 0);
-                this.players.push(player);
-            });
+        // Create players
+        this.players = [];
+        this.activePlayerIndex = 0;
+        this.partyData.forEach((charData, i) => {
+            const x = FIELD_WIDTH / 2 + (i - 1) * 50;
+            const y = FIELD_HEIGHT / 2 + 50;
+            const player = new Player(this, x, y, charData);
+            player.setAsActive(i === 0);
+            this.players.push(player);
+        });
 
-            this.activePlayer = this.players[0];
-            this.cameras.main.startFollow(this.activePlayer, true, 0.1, 0.1);
+        this.activePlayer = this.players[0];
+        this.cameras.main.startFollow(this.activePlayer, true, 0.1, 0.1);
 
-            // Shield system
-            console.log('[GameScene] shield system');
-            this.shieldSystem = new ShieldSystem();
-            this.shieldSystem.init(this.partyData);
+        // Shield system
+        this.shieldSystem = new ShieldSystem();
+        this.shieldSystem.init(this.partyData);
 
-            // Skill system
-            this.skillSystem = new SkillSystem(this);
-            this.partyData.forEach(c => this.skillSystem.initForCharacter(c.id, c));
+        // Skill system
+        this.skillSystem = new SkillSystem(this);
+        this.partyData.forEach(c => this.skillSystem.initForCharacter(c.id, c));
 
-            // Bullet pools
-            console.log('[GameScene] bullet pools');
-            this.playerBullets = new BulletPool(this, 'bullet_player', 200);
-            this.enemyBullets = new BulletPool(this, 'bullet_enemy', 300);
+        // Bullet pools
+        this.playerBullets = new BulletPool(this, 'bullet_player', 200);
+        this.enemyBullets = new BulletPool(this, 'bullet_enemy', 300);
 
-            // Enemy pool
-            console.log('[GameScene] enemy pool');
-            this.enemyPool = new EnemyPool(this, 30);
+        // Enemy pool
+        this.enemyPool = new EnemyPool(this, 30);
 
-            // Wave manager
-            this.waveManager = new WaveManager(this);
-            this.waveManager.init(this.stageData, this.enemiesData);
+        // Wave manager
+        this.waveManager = new WaveManager(this);
+        this.waveManager.init(this.stageData, this.enemiesData);
 
-            // Input
-            this.cursors = this.input.keyboard.createCursorKeys();
-            this.wasd = this.input.keyboard.addKeys('W,A,S,D');
-            this.skillKeys = {
-                Q: this.input.keyboard.addKey('Q'),
-                E: this.input.keyboard.addKey('E'),
-                ONE: this.input.keyboard.addKey('ONE'),
-                TWO: this.input.keyboard.addKey('TWO'),
-                THREE: this.input.keyboard.addKey('THREE')
-            };
+        // Input
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.wasd = this.input.keyboard.addKeys('W,A,S,D');
+        this.skillKeys = {
+            Q: this.input.keyboard.addKey('Q'),
+            E: this.input.keyboard.addKey('E'),
+            ONE: this.input.keyboard.addKey('ONE'),
+            TWO: this.input.keyboard.addKey('TWO'),
+            THREE: this.input.keyboard.addKey('THREE')
+        };
 
-            // Collisions
-            console.log('[GameScene] collisions');
-            this.setupCollisions();
+        // Collisions
+        this.setupCollisions();
 
-            // Launch UI Scene
-            console.log('[GameScene] launch UIScene');
-            this.scene.launch('UIScene', {
-                party: this.partyData,
-                stageData: this.stageData,
-                shieldSystem: this.shieldSystem,
-                skillSystem: this.skillSystem
-            });
+        // Launch UI Scene
+        this.scene.launch('UIScene', {
+            party: this.partyData,
+            stageData: this.stageData,
+            shieldSystem: this.shieldSystem,
+            skillSystem: this.skillSystem
+        });
 
-            // Wave text
-            this.waveText = this.add.text(FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 100, '', {
-                fontSize: '32px', fontFamily: 'Arial', color: '#ffcc00',
-                stroke: '#000000', strokeThickness: 4
-            }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+        // Wave text
+        this.waveText = this.add.text(FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 100, '', {
+            fontSize: '32px', fontFamily: 'Arial', color: '#ffcc00',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
 
-            // Event listeners
-            EventsCenter.on(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
-            EventsCenter.on(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
-            EventsCenter.on(GameEvents.BOSS_BREAK, this.onBossBreak, this);
+        // Event listeners
+        EventsCenter.on(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
+        EventsCenter.on(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
+        EventsCenter.on(GameEvents.BOSS_BREAK, this.onBossBreak, this);
 
-            this.events.once('shutdown', this.cleanup, this);
+        this.events.once('shutdown', this.cleanup, this);
 
-            // Start first wave
-            this.time.delayedCall(1000, () => this.startNextWave());
-            console.log('[GameScene] create() complete');
-        } catch (err) {
-            console.error('[GameScene] create() ERROR:', err);
-            // Show error on screen
-            this.add.text(400, 300, `ERROR: ${err.message}`, {
-                fontSize: '16px', fontFamily: 'Arial', color: '#ff0000',
-                backgroundColor: '#000000', padding: { x: 10, y: 10 },
-                wordWrap: { width: 700 }
-            }).setOrigin(0.5).setDepth(9999).setScrollFactor(0);
-        }
+        // Start first wave
+        this.time.delayedCall(1000, () => this.startNextWave());
     }
 
     createFloor() {

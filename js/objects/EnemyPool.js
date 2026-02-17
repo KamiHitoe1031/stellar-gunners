@@ -6,12 +6,12 @@ class EnemyPool {
 
         for (let i = 0; i < size; i++) {
             const enemy = new Enemy(scene, -200, -200, 'enemy_default');
-            enemy.setActive(false);
-            enemy.setVisible(false);
-            if (enemy.body) enemy.body.enable = false;
             scene.add.existing(enemy);
             scene.physics.add.existing(enemy);
             this.group.add(enemy);
+            enemy.setActive(false);
+            enemy.setVisible(false);
+            if (enemy.body) enemy.body.enable = false;
             this.pool.push(enemy);
         }
 

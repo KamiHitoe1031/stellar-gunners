@@ -31,8 +31,10 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
     deactivate() {
         this.setActive(false);
         this.setVisible(false);
-        this.body.enable = false;
-        this.setVelocity(0, 0);
+        if (this.body) {
+            this.body.enable = false;
+            this.setVelocity(0, 0);
+        }
     }
 
     preUpdate(time, delta) {

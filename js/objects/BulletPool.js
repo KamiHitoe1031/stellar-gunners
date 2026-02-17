@@ -9,8 +9,8 @@ class BulletPool {
 
         for (let i = 0; i < size; i++) {
             const bullet = new Bullet(scene, -100, -100, textureKey);
-            bullet.deactivate();
             this.group.add(bullet, true);
+            bullet.deactivate();
         }
     }
 
