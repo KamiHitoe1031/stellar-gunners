@@ -160,4 +160,46 @@ class SaveManager {
         const save = this.load();
         return save.inventory || {};
     }
+
+    /** Refill stamina based on time elapsed (1 per minute, max 120) */
+    static refillStamina(save) {
+        if (!save) save = this.load();
+        const now = Date.now();
+        const last = save.player.lastStaminaRefill || now;
+        const elapsedMinutes = Math.floor((now - last) / 60000);
+        const maxStamina = 120;
+
+        if (elapsedMinutes > 0 && save.player.stamina < maxStamina) {
+            save.player.stamina = Math.min(maxStamina, save.player.stamina + elapsedMinutes);
+            save.player.lastStaminaRefill = now;
+            this.save(save);
+        }
+        return save;
+    }
+
+    /** Grant XP to party members after battle */
+    static grantBattleRewards(partyIds, stageData) {
+        const save = this.load();
+        const xpPerChar = stageData.baseXP || 50;
+        const creditsReward = stageData.baseCreditReward || 100;
+
+        partyIds.forEach(charId => {
+            if (!save.characters[charId]) {
+                save.characters[charId] = { level: 1, exp: 0, breakthroughCount: 0, awakening: 0 };
+            }
+            save.characters[charId].exp = (save.characters[charId].exp || 0) + xpPerChar;
+        });
+
+        // Player XP
+        save.player.exp = (save.player.exp || 0) + Math.floor(xpPerChar / 2);
+        const playerLevelThreshold = save.player.level * 200;
+        if (save.player.exp >= playerLevelThreshold) {
+            save.player.level += 1;
+            save.player.exp -= playerLevelThreshold;
+        }
+
+        save.player.credits += creditsReward;
+        this.save(save);
+        return { xpPerChar, creditsReward, playerLevel: save.player.level };
+    }
 }

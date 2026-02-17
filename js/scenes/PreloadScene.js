@@ -31,6 +31,7 @@ class PreloadScene extends Phaser.Scene {
         this.load.json('scenarios', 'assets/data/scenarios.json');
         this.load.json('scenario_gallery', 'assets/data/scenario_gallery.json');
         this.load.json('drop_tables', 'assets/data/drop_tables.json');
+        this.load.json('weapon_parts', 'assets/data/weapon_parts.json');
 
         // Load character sprites (game-ready processed images)
         for (let i = 1; i <= 6; i++) {
@@ -73,7 +74,31 @@ class PreloadScene extends Phaser.Scene {
             this.load.image(`portrait_${id}`, `assets/images/game/portraits/${id}.png`);
         });
 
-        // Don't fail on missing images - generate placeholders as fallback
+        // Load audio (BGM + SFX) - gracefully skip if files don't exist
+        const bgmTracks = [
+            { key: 'bgm_title', path: 'assets/audio/bgm/title.mp3' },
+            { key: 'bgm_menu', path: 'assets/audio/bgm/menu.mp3' },
+            { key: 'bgm_battle', path: 'assets/audio/bgm/battle.mp3' },
+            { key: 'bgm_boss', path: 'assets/audio/bgm/boss.mp3' },
+            { key: 'bgm_result', path: 'assets/audio/bgm/result.mp3' },
+            { key: 'bgm_scenario', path: 'assets/audio/bgm/scenario.mp3' }
+        ];
+        bgmTracks.forEach(t => this.load.audio(t.key, t.path));
+
+        const sfxFiles = [
+            { key: 'sfx_shoot', path: 'assets/audio/sfx/shoot.mp3' },
+            { key: 'sfx_hit', path: 'assets/audio/sfx/hit.mp3' },
+            { key: 'sfx_explosion', path: 'assets/audio/sfx/explosion.mp3' },
+            { key: 'sfx_skill', path: 'assets/audio/sfx/skill.mp3' },
+            { key: 'sfx_ult', path: 'assets/audio/sfx/ult.mp3' },
+            { key: 'sfx_dodge', path: 'assets/audio/sfx/dodge.mp3' },
+            { key: 'sfx_levelup', path: 'assets/audio/sfx/levelup.mp3' },
+            { key: 'sfx_button', path: 'assets/audio/sfx/button.mp3' },
+            { key: 'sfx_wave', path: 'assets/audio/sfx/wave.mp3' }
+        ];
+        sfxFiles.forEach(t => this.load.audio(t.key, t.path));
+
+        // Don't fail on missing assets - generate placeholders as fallback
         this.load.on('loaderror', (file) => {
             console.warn(`Failed to load: ${file.key} (${file.url}) - will use placeholder`);
         });
@@ -82,6 +107,7 @@ class PreloadScene extends Phaser.Scene {
     create() {
         this.generatePlaceholderTextures();
         SaveManager.initCharacters(this.cache.json.get('characters'));
+        AudioManager.init(this);
         this.scene.start('TitleScene');
     }
 

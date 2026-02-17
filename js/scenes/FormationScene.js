@@ -216,9 +216,25 @@ class FormationScene extends Phaser.Scene {
             this.selectedParty = this.characters.slice(0, 3).map(c => c.id);
         }
 
+        // Stamina check
+        const staminaCost = this.selectedStage.staminaCost || 0;
         const save = SaveManager.load();
+        SaveManager.refillStamina(save);
+
+        if (save.player.stamina < staminaCost) {
+            this.showNotification(`電力不足！ 必要: ${staminaCost} / 現在: ${save.player.stamina}`);
+            return;
+        }
+
+        // Deduct stamina
+        save.player.stamina -= staminaCost;
+        save.progress.staminaSpent = (save.progress.staminaSpent || 0) + staminaCost;
+        SaveManager.save(save);
+
         const weaponsData = this.cache.json.get('weapons');
         const modulesData = this.cache.json.get('modules');
+        // Cache parts data for EquipmentSystem
+        window._cachedPartsData = this.cache.json.get('weapon_parts') || [];
 
         const partyData = this.selectedParty.map(id => {
             const charBase = this.characters.find(c => c.id === id);
@@ -342,6 +358,19 @@ class FormationScene extends Phaser.Scene {
             this.equipPopup.add(itemBg);
             this.equipPopup.add(itemText);
             this.equipPopup.add(itemSub);
+        });
+    }
+
+    showNotification(msg) {
+        const text = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, msg, {
+            fontSize: '18px', fontFamily: 'Arial', color: '#ff4444',
+            stroke: '#000000', strokeThickness: 3,
+            backgroundColor: '#220000', padding: { x: 16, y: 10 }
+        }).setOrigin(0.5).setDepth(300);
+        this.tweens.add({
+            targets: text, alpha: 0, y: text.y - 40,
+            duration: 2000, delay: 1000,
+            onComplete: () => text.destroy()
         });
     }
 

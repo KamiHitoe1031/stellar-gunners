@@ -40,4 +40,30 @@ class DamageSystem {
         }
         return Math.floor(breakDmg);
     }
+
+    /**
+     * Check if an enemy attack should apply a status effect.
+     * Based on enemy attribute: corrosion→poison, bio→burn, psychic→slow, machine→stun
+     */
+    static rollStatusEffect(enemyAttribute, isElite) {
+        const chance = isElite ? 0.25 : 0.10;
+        if (Math.random() > chance) return null;
+
+        switch (enemyAttribute) {
+            case 'corrosion':
+                return { name: 'poison', duration: 5000, icon: '☠', color: '#aa44dd',
+                         dot: true, tickDamage: 0.02, tickInterval: 1000 };
+            case 'bio':
+                return { name: 'burn', duration: 4000, icon: '🔥', color: '#ff6622',
+                         dot: true, tickDamage: 0.03, tickInterval: 1000 };
+            case 'psychic':
+                return { name: 'slow', duration: 3000, icon: '▼', color: '#44cc44',
+                         speedMult: 0.5 };
+            case 'machine':
+                return { name: 'stun', duration: 1500, icon: '⚡', color: '#ffff00',
+                         speedMult: 0 };
+            default:
+                return null;
+        }
+    }
 }

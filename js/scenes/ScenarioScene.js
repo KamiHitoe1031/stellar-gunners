@@ -55,6 +55,9 @@ class ScenarioScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-SPACE', () => this.advanceLine());
         this.input.keyboard.on('keydown-ENTER', () => this.advanceLine());
 
+        // Start scenario BGM
+        AudioManager.playBGM('bgm_scenario');
+
         // Show first line
         this.showLine(0);
     }
@@ -95,6 +98,16 @@ class ScenarioScene extends Phaser.Scene {
         this.currentIndex = index;
         this.textComplete = false;
         this.isTransitioning = false;
+
+        // BGM change
+        if (line.bgmKey && line.bgmKey !== '') {
+            AudioManager.playBGM(line.bgmKey);
+        }
+
+        // SFX
+        if (line.sfxKey && line.sfxKey !== '') {
+            AudioManager.playSFX(line.sfxKey);
+        }
 
         // Background change
         if (line.bgKey && line.bgKey !== '') {

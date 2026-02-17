@@ -30,7 +30,8 @@ const config = {
         GalleryScene,
         EnhanceScene,
         ShopScene,
-        TransformPotScene
+        TransformPotScene,
+        SettingsScene
     ]
 };
 

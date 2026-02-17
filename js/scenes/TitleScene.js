@@ -4,6 +4,8 @@ class TitleScene extends Phaser.Scene {
     }
 
     create() {
+        AudioManager.playBGM('bgm_title');
+
         const cx = GAME_WIDTH / 2;
         const cy = GAME_HEIGHT / 2;
 

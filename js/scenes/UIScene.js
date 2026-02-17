@@ -38,8 +38,25 @@ class UIScene extends Phaser.Scene {
 
         // Skill buttons
         const skillY = GAME_HEIGHT - 50;
-        this.skill1Btn = new SkillButton(this, GAME_WIDTH - 130, skillY, 'Q:SK1', 'Q');
-        this.skill2Btn = new SkillButton(this, GAME_WIDTH - 60, skillY, 'E:SK2', 'E');
+        this.skill1Btn = new SkillButton(this, GAME_WIDTH - 200, skillY, 'Q:SK1', 'Q');
+        this.skill2Btn = new SkillButton(this, GAME_WIDTH - 135, skillY, 'E:SK2', 'E');
+
+        // ULT button
+        this.ultBtn = new UltButton(this, GAME_WIDTH - 65, skillY);
+        this.ultBtn.onActivate = () => {
+            const gameScene = this.scene.get('GameScene');
+            if (gameScene) gameScene.tryUseUlt();
+        };
+
+        // Dodge cooldown indicator
+        this.dodgeCdText = this.add.text(GAME_WIDTH - 265, skillY + 12, '', {
+            fontSize: '11px', fontFamily: 'Arial', color: '#88ccff',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+        this.dodgeLabel = this.add.text(GAME_WIDTH - 265, skillY - 6, 'SPACE', {
+            fontSize: '10px', fontFamily: 'Arial', color: '#667788',
+            stroke: '#000000', strokeThickness: 1
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
 
         this.skill1Btn.onActivate = () => {
             const gameScene = this.scene.get('GameScene');
@@ -58,7 +75,7 @@ class UIScene extends Phaser.Scene {
         this.createCharSwitchButtons();
 
         // Controls hint
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 15, 'WASD: 移動  Q/E: スキル  1/2/3: キャラ切替', {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 15, 'WASD: 移動  Q/E: スキル  R: ULT  SPACE: 回避  1/2/3: 切替', {
             fontSize: '10px', fontFamily: 'Arial', color: '#555555',
             stroke: '#000000', strokeThickness: 1
         }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
@@ -124,6 +141,24 @@ class UIScene extends Phaser.Scene {
                 this.skillSystem.getCooldownPercent(charId, 'skill2'),
                 this.skillSystem.getRemainingSeconds(charId, 'skill2')
             );
+        }
+
+        // Update ULT gauge
+        if (this.skillSystem && gameScene?.activePlayer) {
+            const charId = gameScene.activePlayer.charId;
+            this.ultBtn.setGauge(this.skillSystem.getUltPercent(charId));
+        }
+
+        // Update dodge cooldown
+        if (gameScene?.activePlayer) {
+            const player = gameScene.activePlayer;
+            if (player.dodgeCooldown > 0) {
+                this.dodgeCdText.setText(Math.ceil(player.dodgeCooldown / 1000) + 's');
+                this.dodgeLabel.setColor('#555555');
+            } else {
+                this.dodgeCdText.setText('OK');
+                this.dodgeLabel.setColor('#88ccff');
+            }
         }
 
         // Update boss HP
@@ -231,5 +266,6 @@ class UIScene extends Phaser.Scene {
         this.bossHUD.cleanup();
         this.skill1Btn.destroy();
         this.skill2Btn.destroy();
+        this.ultBtn.destroy();
     }
 }

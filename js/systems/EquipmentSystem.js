@@ -1,8 +1,9 @@
 class EquipmentSystem {
     static getCharBattleStats(charData, save, weaponsData, modulesData) {
-        const charSave = save.characters[charData.id] || { level: 1, breakthroughCount: 0 };
+        const charSave = save.characters[charData.id] || { level: 1, breakthroughCount: 0, awakening: 0 };
         const level = charSave.level || 1;
         const breakthrough = charSave.breakthroughCount || 0;
+        const awakening = charSave.awakening || 0;
 
         // Base stats scaled by level
         let hp = charData.hp + charData.growthHp * (level - 1);
@@ -21,6 +22,15 @@ class EquipmentSystem {
             atk = Math.floor(atk * btMult);
             def = Math.floor(def * btMult);
             shield = Math.floor(shield * btMult);
+        }
+
+        // Awakening bonus: +10% all stats per level
+        if (awakening > 0) {
+            const awMult = 1 + awakening * 0.10;
+            hp = Math.floor(hp * awMult);
+            atk = Math.floor(atk * awMult);
+            def = Math.floor(def * awMult);
+            shield = Math.floor(shield * awMult);
         }
 
         // Type bonus
@@ -82,10 +92,23 @@ class EquipmentSystem {
             });
         });
 
+        // Weapon parts bonuses (percentage-based modifiers stored for Player.js to apply)
+        let partBonuses = null;
+        if (equipment.weaponId) {
+            const partsData = typeof window !== 'undefined' && window._cachedPartsData;
+            if (partsData) {
+                partBonuses = this.getPartBonuses(equipment.weaponId, save, partsData);
+                // Apply part bonuses to stats
+                if (partBonuses.damage) atk += Math.floor(atk * partBonuses.damage / 100);
+                if (partBonuses.critRate) critRate += partBonuses.critRate;
+                if (partBonuses.critDmg) critDmg += partBonuses.critDmg;
+            }
+        }
+
         return {
             ...charData,
             hp, atk, def, shield, spd, critRate, critDmg, weaponAtk,
-            level, breakthroughCount: breakthrough
+            level, breakthroughCount: breakthrough, partBonuses
         };
     }
 
@@ -149,5 +172,98 @@ class EquipmentSystem {
             }
         }
         return result;
+    }
+
+    // ===== Weapon Parts =====
+
+    static getWeaponParts(weaponInstanceId, save) {
+        return save.weaponParts?.[weaponInstanceId] || {
+            barrel: null,
+            magazine: null,
+            scope: null,
+            stock: null
+        };
+    }
+
+    static attachPart(weaponInstanceId, slotType, partId) {
+        const save = SaveManager.load();
+        if (!save.weaponParts) save.weaponParts = {};
+        if (!save.weaponParts[weaponInstanceId]) {
+            save.weaponParts[weaponInstanceId] = { barrel: null, magazine: null, scope: null, stock: null };
+        }
+        save.weaponParts[weaponInstanceId][slotType] = partId;
+        SaveManager.save(save);
+    }
+
+    static detachPart(weaponInstanceId, slotType) {
+        const save = SaveManager.load();
+        if (save.weaponParts?.[weaponInstanceId]) {
+            save.weaponParts[weaponInstanceId][slotType] = null;
+            SaveManager.save(save);
+        }
+    }
+
+    static getOwnedParts(save) {
+        return save.ownedParts || [];
+    }
+
+    static addPart(partId) {
+        const save = SaveManager.load();
+        if (!save.ownedParts) save.ownedParts = [];
+        save.ownedParts.push(partId);
+        SaveManager.save(save);
+    }
+
+    static getPartBonuses(weaponInstanceId, save, partsData) {
+        const equipped = this.getWeaponParts(weaponInstanceId, save);
+        const bonuses = {
+            range: 0, accuracy: 0, fireRate: 0, magazineSize: 0,
+            reloadSpeed: 0, stability: 0, critRate: 0, critDmg: 0, damage: 0
+        };
+
+        for (const slot of ['barrel', 'magazine', 'scope', 'stock']) {
+            const partId = equipped[slot];
+            if (!partId) continue;
+            const partDef = partsData.find(p => p.id === partId);
+            if (!partDef) continue;
+
+            // Main effect
+            if (partDef.mainEffect && bonuses[partDef.mainEffect] !== undefined) {
+                bonuses[partDef.mainEffect] += partDef.mainValue;
+            }
+
+            // Sub effects (use midpoint of range for installed parts)
+            for (let i = 1; i <= 3; i++) {
+                const subType = partDef[`sub${i}Type`];
+                const subMin = partDef[`sub${i}ValueMin`];
+                const subMax = partDef[`sub${i}ValueMax`];
+                if (subType && subType !== '' && typeof subMin === 'number') {
+                    const avg = Math.floor((subMin + subMax) / 2);
+                    if (bonuses[subType] !== undefined) {
+                        bonuses[subType] += avg;
+                    }
+                }
+            }
+        }
+
+        return bonuses;
+    }
+
+    // ===== Awakening =====
+
+    static getAwakeningLevel(charId, save) {
+        return save.characters?.[charId]?.awakening || 0;
+    }
+
+    static awakenCharacter(charId, cost) {
+        const save = SaveManager.load();
+        if (save.player.credits < cost) return false;
+        if (!save.characters[charId]) {
+            save.characters[charId] = { level: 1, exp: 0, breakthroughCount: 0, awakening: 0 };
+        }
+        save.characters[charId].awakening = (save.characters[charId].awakening || 0) + 1;
+        save.player.credits -= cost;
+        SaveManager.save(save);
+        return true;
     }
 }

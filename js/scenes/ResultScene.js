@@ -13,15 +13,19 @@ class ResultScene extends Phaser.Scene {
         this.totalDamage = data.totalDamage || 0;
         this.partyDeaths = data.partyDeaths || 0;
         this.isGameOver = data.isGameOver || false;
+        this.partyIds = data.partyIds || [];
     }
 
     create() {
+        AudioManager.playBGM('bgm_result');
         const cx = GAME_WIDTH / 2;
         this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0a1e);
 
-        // Unlock gallery entries on stage clear
+        // Unlock gallery entries and grant XP on stage clear
         if (!this.isGameOver) {
             this.unlockGallery(this.stageData.id);
+            // Grant battle XP to party members
+            this.battleRewards = SaveManager.grantBattleRewards(this.partyIds, this.stageData);
         }
 
         // Result header
@@ -74,6 +78,11 @@ class ResultScene extends Phaser.Scene {
             `総ダメージ: ${this.totalDamage.toLocaleString()}`,
             `戦闘不能: ${this.partyDeaths}名`
         ];
+
+        if (this.battleRewards) {
+            stats.push(`キャラXP: +${this.battleRewards.xpPerChar}`);
+            stats.push(`クレジット: +${this.battleRewards.creditsReward}`);
+        }
 
         stats.forEach((s, i) => {
             this.add.text(cx - 150, statsY + 25 + i * 22, s, {

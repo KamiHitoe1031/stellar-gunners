@@ -59,3 +59,15 @@ const SAVE_KEY = 'stellar_gunners_save';
 
 const FIELD_WIDTH = 1200;
 const FIELD_HEIGHT = 900;
+
+// ULT system
+const ULT_GAUGE_MAX = 1000;
+const ULT_CHARGE_ON_DEAL = 8;      // per hit dealt
+const ULT_CHARGE_ON_RECEIVE = 15;  // per hit received
+const ULT_CHARGE_ON_KILL = 50;     // per enemy killed
+
+// Dodge system
+const DODGE_COOLDOWN = 3000;        // ms
+const DODGE_DURATION = 300;         // ms of invincibility
+const DODGE_SPEED_MULT = 3.0;      // speed multiplier during dodge
+const DODGE_DISTANCE = 120;         // pixels traveled

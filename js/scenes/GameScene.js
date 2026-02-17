@@ -64,6 +64,8 @@ class GameScene extends Phaser.Scene {
         this.skillKeys = {
             Q: this.input.keyboard.addKey('Q'),
             E: this.input.keyboard.addKey('E'),
+            R: this.input.keyboard.addKey('R'),
+            SPACE: this.input.keyboard.addKey('SPACE'),
             ONE: this.input.keyboard.addKey('ONE'),
             TWO: this.input.keyboard.addKey('TWO'),
             THREE: this.input.keyboard.addKey('THREE')
@@ -90,8 +92,12 @@ class GameScene extends Phaser.Scene {
         EventsCenter.on(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
         EventsCenter.on(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
         EventsCenter.on(GameEvents.BOSS_BREAK, this.onBossBreak, this);
+        EventsCenter.on(GameEvents.BOSS_PHASE_CHANGE, this.onBossPhaseChange, this);
 
         this.events.once('shutdown', this.cleanup, this);
+
+        // Battle BGM
+        AudioManager.playBGM('bgm_battle');
 
         // Start first wave
         this.time.delayedCall(1000, () => this.startNextWave());
@@ -191,10 +197,37 @@ class GameScene extends Phaser.Scene {
         const killed = enemy.takeDamage(result.damage);
         this.totalDamageDealt += result.damage;
 
+        // Charge ULT gauge on hit
+        if (this.activePlayer) {
+            this.skillSystem.addUltGauge(this.activePlayer.charId, ULT_CHARGE_ON_DEAL);
+        }
+
         // Damage number
         this.showDamageNumber(enemy.x, enemy.y - 20, result.damage, result.isCrit);
 
         if (killed) {
+            // Bonus ULT charge on kill
+            if (this.activePlayer) {
+                this.skillSystem.addUltGauge(this.activePlayer.charId, ULT_CHARGE_ON_KILL);
+            }
+
+            // Passive: kill ATK stacking (Lilith - チームスピリット)
+            this.players.forEach(p => {
+                if (!p.isDead && p.passiveData?.killAtkStack) {
+                    const pd = p.passiveData;
+                    if (pd.killAtkCurrent < pd.killAtkMax) {
+                        pd.killAtkCurrent = Math.min(pd.killAtkMax, pd.killAtkCurrent + pd.killAtkPerKill);
+                        // Apply bonus ATK to all alive party members
+                        this.players.forEach(ally => {
+                            if (!ally.isDead) {
+                                const bonus = Math.floor(ally.charData.atk * pd.killAtkPerKill);
+                                ally.atk += bonus;
+                            }
+                        });
+                    }
+                }
+            });
+
             this.waveManager.onEnemyDefeated();
         }
 
@@ -207,15 +240,42 @@ class GameScene extends Phaser.Scene {
         if (!bullet.active || !player.active || player.isDead) return;
         if (bullet.isPlayerBullet) return;
 
+        // Dodge i-frames: ignore damage while dodging
+        if (player.isDodging) return;
+
         const result = DamageSystem.calculateDamage(
             { atk: bullet.damage, attribute: bullet.attribute, critRate: 0, critDmg: 100, weaponAtk: 0 },
             { def: player.def, attribute: player.attribute }
         );
 
         let dmg = result.damage;
+
+        // Passive: damage reduction (Kayla - ヘビーアーマー)
+        if (player.passiveData?.damageReduction) {
+            dmg = Math.floor(dmg * (1 - player.passiveData.damageReduction));
+        }
+
+        // Charge ULT gauge on receiving damage
+        if (this.activePlayer) {
+            this.skillSystem.addUltGauge(this.activePlayer.charId, ULT_CHARGE_ON_RECEIVE);
+        }
+
         dmg = this.shieldSystem.applyDamage(dmg);
         if (dmg > 0) {
             player.takeDamage(dmg);
+
+            // Roll for status effect from enemy attribute
+            const isElite = bullet._enemyCategory === 'elite' || bullet._enemyCategory === 'boss';
+            const statusEffect = DamageSystem.rollStatusEffect(bullet.attribute, isElite);
+            if (statusEffect && !player.isDead) {
+                player.addStatusEffect(
+                    statusEffect.name, statusEffect.duration,
+                    statusEffect.icon, statusEffect.color,
+                    { dot: statusEffect.dot, tickDamage: statusEffect.tickDamage,
+                      tickInterval: statusEffect.tickInterval, speedMult: statusEffect.speedMult }
+                );
+            }
+
             if (player.isDead) {
                 this.partyDeaths++;
                 this.switchToNextAlive();
@@ -229,6 +289,7 @@ class GameScene extends Phaser.Scene {
     onEnemyContactPlayer(player, enemy) {
         if (!player.active || player.isDead || !enemy.active || enemy.isDead) return;
         if (enemy.attackPattern !== 'chase_contact') return;
+        if (player.isDodging) return;
 
         // Contact damage every ~500ms (throttled by checking enemy data)
         if (!enemy._contactCooldown) enemy._contactCooldown = 0;
@@ -239,6 +300,19 @@ class GameScene extends Phaser.Scene {
         let remaining = this.shieldSystem.applyDamage(dmg);
         if (remaining > 0) {
             player.takeDamage(remaining);
+
+            // Roll for status effect from contact
+            const isElite = enemy.enemyData?.category === 'elite' || enemy.enemyData?.category === 'boss';
+            const statusEffect = DamageSystem.rollStatusEffect(enemy.attribute, isElite);
+            if (statusEffect && !player.isDead) {
+                player.addStatusEffect(
+                    statusEffect.name, statusEffect.duration,
+                    statusEffect.icon, statusEffect.color,
+                    { dot: statusEffect.dot, tickDamage: statusEffect.tickDamage,
+                      tickInterval: statusEffect.tickInterval, speedMult: statusEffect.speedMult }
+                );
+            }
+
             if (player.isDead) {
                 this.partyDeaths++;
                 this.switchToNextAlive();
@@ -308,6 +382,7 @@ class GameScene extends Phaser.Scene {
     startNextWave() {
         const waveData = this.waveManager.startNextWave();
         if (!waveData) return;
+        AudioManager.playSFX('sfx_wave');
 
         const progress = this.waveManager.getProgress();
         this.waveText.setText(`Wave ${progress.currentWave}/${progress.totalWaves}`);
@@ -397,7 +472,8 @@ class GameScene extends Phaser.Scene {
                 isFirstClear,
                 timeInSeconds,
                 totalDamage: this.totalDamageDealt,
-                partyDeaths: this.partyDeaths
+                partyDeaths: this.partyDeaths,
+                partyIds: this.partyData.map(p => p.id)
             });
         });
     }
@@ -405,7 +481,40 @@ class GameScene extends Phaser.Scene {
     onBossBreak(data) {
         if (data.isBroken) {
             this.cameras.main.shake(300, 0.01);
+            AudioManager.playSFX('sfx_explosion');
+
+            const breakText = this.add.text(
+                FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 80, 'BREAK!',
+                { fontSize: '36px', fontFamily: 'Arial', color: '#ffff00',
+                  stroke: '#000000', strokeThickness: 5 }
+            ).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+
+            this.tweens.add({
+                targets: breakText, alpha: 0, scale: 1.5, y: breakText.y - 40,
+                duration: 1500, onComplete: () => breakText.destroy()
+            });
         }
+    }
+
+    onBossPhaseChange(data) {
+        this.cameras.main.flash(500, 255, 50, 50);
+        AudioManager.playSFX('sfx_explosion');
+
+        // Switch to boss BGM on phase 2
+        if (data.phase === 2) {
+            AudioManager.playBGM('bgm_boss');
+        }
+
+        const phaseText = this.add.text(
+            FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 120, `PHASE ${data.phase}`,
+            { fontSize: '28px', fontFamily: 'Arial', color: '#ff4444',
+              stroke: '#000000', strokeThickness: 4 }
+        ).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+
+        this.tweens.add({
+            targets: phaseText, alpha: 0, y: phaseText.y - 50,
+            duration: 2000, onComplete: () => phaseText.destroy()
+        });
     }
 
     checkGameOver() {
@@ -467,6 +576,21 @@ class GameScene extends Phaser.Scene {
             if (e._contactCooldown > 0) e._contactCooldown -= delta;
         });
 
+        // Passive: crit ramp update (Mira - コールドプレシジョン)
+        this.players.forEach(p => {
+            if (!p.isDead && p.passiveData?.critRamp) {
+                const pd = p.passiveData;
+                pd.critRampTimer = (pd.critRampTimer || 0) + delta;
+                if (pd.critRampTimer >= 2000) {
+                    pd.critRampTimer -= 2000;
+                    if (pd.critRampCurrent < pd.critRampMax) {
+                        pd.critRampCurrent = Math.min(pd.critRampMax, pd.critRampCurrent + pd.critRampRate);
+                        p.critRate = p.charData.critRate + pd.critRampCurrent;
+                    }
+                }
+            }
+        });
+
         // Skill system update
         this.skillSystem.update(delta);
 
@@ -476,6 +600,18 @@ class GameScene extends Phaser.Scene {
         }
         if (Phaser.Input.Keyboard.JustDown(this.skillKeys.E)) {
             this.tryUseSkill('skill2');
+        }
+        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.R)) {
+            this.tryUseUlt();
+        }
+
+        // Dodge input
+        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.SPACE)) {
+            if (this.activePlayer && !this.activePlayer.isDead) {
+                const uiScene = this.scene.get('UIScene');
+                const joyInput = uiScene?.getJoystickInput?.() || { active: false, dx: 0, dy: 0 };
+                this.activePlayer.tryDodge(this.cursors, this.wasd, joyInput);
+            }
         }
 
         // Character switch
@@ -494,26 +630,31 @@ class GameScene extends Phaser.Scene {
         if (!this.activePlayer || this.activePlayer.isDead) return;
         const charId = this.activePlayer.charId;
         if (this.skillSystem.useSkill(charId, skillSlot)) {
+            AudioManager.playSFX('sfx_skill');
             const activeEnemies = this.enemyPool.getActiveEnemies();
 
             // Support skills (medic/tank heal/shield)
             const charData = this.activePlayer.charData;
             if (charData.type === 'medic' && skillSlot === 'skill1') {
-                // Heal active character 20%
-                this.activePlayer.heal(Math.floor(this.activePlayer.maxHp * 0.2));
+                // Heal active character 20% (+ heal boost passive)
+                const healBoost = 1 + (this.activePlayer.passiveData?.healBoost || 0);
+                this.activePlayer.heal(Math.floor(this.activePlayer.maxHp * 0.2 * healBoost));
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'HEAL', false);
             } else if (charData.type === 'medic' && skillSlot === 'skill2') {
-                // Regen field: heal all 2% per second for 30 seconds
-                let ticks = 0;
-                const regenEvent = this.time.addEvent({
+                // Regen field: heal all 2% per second for 30 seconds (+ heal boost passive)
+                const healBoost = 1 + (this.activePlayer.passiveData?.healBoost || 0);
+                this.time.addEvent({
                     delay: 1000, repeat: 29, callback: () => {
                         this.players.forEach(p => {
-                            if (!p.isDead) p.heal(Math.floor(p.maxHp * 0.02));
+                            if (!p.isDead) p.heal(Math.floor(p.maxHp * 0.02 * healBoost));
                         });
                     }
                 });
                 this.players.forEach(p => {
-                    if (!p.isDead) this.showDamageNumber(p.x, p.y - 30, 'REGEN', false);
+                    if (!p.isDead) {
+                        this.showDamageNumber(p.x, p.y - 30, 'REGEN', false);
+                        p.addStatusEffect('regen', 30000, '♥', '#88ff88');
+                    }
                 });
             } else if (charData.type === 'tank' && skillSlot === 'skill1') {
                 // Fortress Shot: ATK×150% + DEF+20% for 5s
@@ -521,12 +662,14 @@ class GameScene extends Phaser.Scene {
                 const defBonus = Math.floor(this.activePlayer.def * 0.2);
                 this.activePlayer.def += defBonus;
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'DEF UP', false);
+                this.activePlayer.addStatusEffect('def_up', 5000, '▲', '#4488ff');
                 this.time.delayedCall(5000, () => { this.activePlayer.def -= defBonus; });
                 return;
             } else if (charData.type === 'tank' && skillSlot === 'skill2') {
                 // Shield +300 + damage reduction 3s
                 this.shieldSystem.heal(300);
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'SHIELD', false);
+                this.activePlayer.addStatusEffect('shield_up', 3000, '◆', '#44ccff');
             } else if (charData.type === 'support' && skillSlot === 'skill2') {
                 // ATK +25% buff for 8 seconds
                 this.players.forEach(p => {
@@ -534,6 +677,7 @@ class GameScene extends Phaser.Scene {
                         const bonus = Math.floor(p.atk * 0.25);
                         p.atk += bonus;
                         this.showDamageNumber(p.x, p.y - 30, 'ATK UP', false);
+                        p.addStatusEffect('atk_up', 8000, '▲', '#ff8844');
                         this.time.delayedCall(8000, () => { p.atk -= bonus; });
                     }
                 });
@@ -544,9 +688,47 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    tryUseUlt() {
+        if (!this.activePlayer || this.activePlayer.isDead) return;
+        const charId = this.activePlayer.charId;
+        if (this.skillSystem.useUlt(charId)) {
+            const activeEnemies = this.enemyPool.getActiveEnemies();
+
+            // ULT effects
+            AudioManager.playSFX('sfx_ult');
+            this.cameras.main.flash(300, 255, 200, 50);
+            this.cameras.main.shake(200, 0.005);
+
+            // Show ULT name
+            const ultData = this.skillSystem.ultGauge[charId];
+            const ultName = ultData?.ultName || 'ULT';
+            const ultText = this.add.text(
+                this.activePlayer.x, this.activePlayer.y - 60,
+                ultName,
+                {
+                    fontSize: '24px', fontFamily: 'Arial', color: '#ffcc00',
+                    stroke: '#000000', strokeThickness: 4
+                }
+            ).setOrigin(0.5).setDepth(100);
+
+            this.tweens.add({
+                targets: ultText,
+                y: ultText.y - 50,
+                alpha: 0,
+                scale: 1.5,
+                duration: 1200,
+                onComplete: () => ultText.destroy()
+            });
+
+            // Execute ULT attack
+            this.activePlayer.useUlt(activeEnemies, this.playerBullets);
+        }
+    }
+
     cleanup() {
         EventsCenter.off(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
         EventsCenter.off(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
         EventsCenter.off(GameEvents.BOSS_BREAK, this.onBossBreak, this);
+        EventsCenter.off(GameEvents.BOSS_PHASE_CHANGE, this.onBossPhaseChange, this);
     }
 }

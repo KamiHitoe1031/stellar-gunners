@@ -12,6 +12,7 @@ class EnhanceScene extends Phaser.Scene {
         this.characters = this.cache.json.get('characters');
         this.weaponsData = this.cache.json.get('weapons');
         this.progressionData = this.cache.json.get('progression');
+        this.partsData = this.cache.json.get('weapon_parts') || [];
         this.save = SaveManager.load();
 
         this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0e0e22);
@@ -37,10 +38,12 @@ class EnhanceScene extends Phaser.Scene {
         // Tabs
         const tabs = [
             { key: 'character', label: 'キャラ強化' },
-            { key: 'weapon', label: '武器強化' }
+            { key: 'weapon', label: '武器強化' },
+            { key: 'parts', label: '武器改造' },
+            { key: 'awakening', label: '覚醒' }
         ];
         tabs.forEach((tab, i) => {
-            const tx = 130 + i * 150;
+            const tx = 100 + i * 120;
             const isActive = this.currentTab === tab.key;
             const tabBg = this.add.rectangle(tx, 62, 130, 28, isActive ? 0x2244aa : 0x1a1a33)
                 .setInteractive({ useHandCursor: true })
@@ -56,8 +59,12 @@ class EnhanceScene extends Phaser.Scene {
 
         if (this.currentTab === 'character') {
             this.showCharacterList();
-        } else {
+        } else if (this.currentTab === 'weapon') {
             this.showWeaponList();
+        } else if (this.currentTab === 'parts') {
+            this.showPartsTab();
+        } else if (this.currentTab === 'awakening') {
+            this.showAwakeningTab();
         }
     }
 
@@ -354,6 +361,252 @@ class EnhanceScene extends Phaser.Scene {
                     fontSize: '12px', fontFamily: 'Arial', color: '#ffcc00'
                 }).setOrigin(0.5);
             }
+        });
+    }
+
+    // ===== WEAPON PARTS TAB =====
+    showPartsTab() {
+        const ownedWeapons = EquipmentSystem.getOwnedWeapons(this.save, this.weaponsData);
+
+        if (ownedWeapons.length === 0) {
+            this.add.text(GAME_WIDTH / 2, 200, '武器を所持していません', {
+                fontSize: '16px', fontFamily: 'Arial', color: '#666666'
+            }).setOrigin(0.5);
+            return;
+        }
+
+        this.add.text(50, 88, '武器を選択して部品を装着:', {
+            fontSize: '13px', fontFamily: 'Arial', color: '#cccccc'
+        });
+
+        ownedWeapons.forEach((wpn, i) => {
+            const y = 115 + i * 45;
+            if (y > GAME_HEIGHT - 80) return;
+
+            const stars = '★'.repeat(wpn.def.rarity);
+            const bg = this.add.rectangle(GAME_WIDTH / 2, y + 15, 700, 38, 0x1a1a33, 0.9)
+                .setInteractive({ useHandCursor: true })
+                .setStrokeStyle(1, 0x333355);
+
+            this.add.text(70, y + 5, `${stars} ${wpn.def.name}`, {
+                fontSize: '13px', fontFamily: 'Arial', color: '#ffffff'
+            });
+            this.add.text(70, y + 21, `Lv.${wpn.level || 1}  ${wpn.def.weaponType}`, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#aaaaaa'
+            });
+
+            // Show equipped parts count
+            const parts = EquipmentSystem.getWeaponParts(wpn.instanceId, this.save);
+            const equipped = ['barrel', 'magazine', 'scope', 'stock'].filter(s => parts[s]).length;
+            this.add.text(GAME_WIDTH - 70, y + 15, `${equipped}/4`, {
+                fontSize: '12px', fontFamily: 'Arial', color: equipped > 0 ? '#88ccff' : '#555555'
+            }).setOrigin(0.5);
+
+            bg.on('pointerover', () => bg.setStrokeStyle(2, 0x6688ff));
+            bg.on('pointerout', () => bg.setStrokeStyle(1, 0x333355));
+            bg.on('pointerdown', () => this.showWeaponPartDetail(wpn));
+        });
+    }
+
+    showWeaponPartDetail(wpn) {
+        this.clearUI();
+        this.save = SaveManager.load();
+        this.createBackButton(() => this.showMain());
+
+        const stars = '★'.repeat(wpn.def.rarity);
+        this.add.text(GAME_WIDTH / 2, 28, `${stars} ${wpn.def.name} - 部品装着`, {
+            fontSize: '18px', fontFamily: 'Arial', color: '#ffffff',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5);
+
+        this.add.text(GAME_WIDTH - 20, 15, `クレジット: ${this.save.player.credits}`, {
+            fontSize: '13px', fontFamily: 'Arial', color: '#ffcc44'
+        }).setOrigin(1, 0);
+
+        const slots = ['barrel', 'magazine', 'scope', 'stock'];
+        const slotNames = { barrel: 'バレル', magazine: 'マガジン', scope: 'スコープ', stock: 'ストック' };
+        const slotIcons = { barrel: '║', magazine: '▬', scope: '◎', stock: '╠' };
+        const parts = EquipmentSystem.getWeaponParts(wpn.instanceId, this.save);
+        const ownedPartIds = EquipmentSystem.getOwnedParts(this.save);
+
+        slots.forEach((slot, i) => {
+            const y = 75 + i * 120;
+            const equippedPartId = parts[slot];
+            const equippedPart = equippedPartId ? this.partsData.find(p => p.id === equippedPartId) : null;
+
+            // Slot header
+            this.add.rectangle(GAME_WIDTH / 2, y + 10, 700, 30, 0x1a2233, 0.9)
+                .setStrokeStyle(1, 0x334466);
+            this.add.text(60, y + 3, `${slotIcons[slot]} ${slotNames[slot]}`, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#88aacc'
+            });
+
+            if (equippedPart) {
+                // Show equipped part
+                const qualColor = equippedPart.quality === 'high' ? '#ffcc00' : '#ffffff';
+                this.add.text(200, y + 3, `装着: ${equippedPart.name}`, {
+                    fontSize: '13px', fontFamily: 'Arial', color: qualColor
+                });
+                this.add.text(400, y + 3, `${equippedPart.mainEffect} +${equippedPart.mainValue}%`, {
+                    fontSize: '11px', fontFamily: 'Arial', color: '#88ff88'
+                });
+                if (equippedPart.specialTrait) {
+                    this.add.text(540, y + 3, equippedPart.specialTrait, {
+                        fontSize: '10px', fontFamily: 'Arial', color: '#ffaa44'
+                    });
+                }
+
+                // Detach button
+                const detachBtn = this.add.text(GAME_WIDTH - 60, y + 10, '[外す]', {
+                    fontSize: '11px', fontFamily: 'Arial', color: '#ff6666'
+                }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+                detachBtn.on('pointerdown', () => {
+                    EquipmentSystem.detachPart(wpn.instanceId, slot);
+                    this.showWeaponPartDetail(wpn);
+                });
+            } else {
+                this.add.text(200, y + 3, '未装着', {
+                    fontSize: '13px', fontFamily: 'Arial', color: '#555555'
+                });
+            }
+
+            // Compatible parts list
+            const compatible = this.partsData.filter(p => {
+                if (p.slotType !== slot) return false;
+                if (p.weaponTypeRestrict && p.weaponTypeRestrict !== '' && p.weaponTypeRestrict !== wpn.def.weaponType) return false;
+                return ownedPartIds.includes(p.id);
+            });
+
+            compatible.forEach((part, j) => {
+                if (j > 2) return; // Max 3 per slot to prevent overflow
+                const py = y + 35 + j * 24;
+                const isEquipped = equippedPartId === part.id;
+                const qualColor = part.quality === 'high' ? 0x443311 : 0x1a1a2e;
+
+                const partBg = this.add.rectangle(GAME_WIDTH / 2, py, 640, 20, qualColor)
+                    .setInteractive({ useHandCursor: !isEquipped })
+                    .setStrokeStyle(1, isEquipped ? 0x4488ff : 0x222233);
+
+                const qLabel = part.quality === 'high' ? '★ ' : '';
+                this.add.text(100, py - 6, `${qLabel}${part.name}`, {
+                    fontSize: '11px', fontFamily: 'Arial', color: isEquipped ? '#88ccff' : '#cccccc'
+                });
+                this.add.text(300, py - 6, `${part.mainEffect}+${part.mainValue}%`, {
+                    fontSize: '10px', fontFamily: 'Arial', color: '#88ff88'
+                });
+                if (part.specialTrait) {
+                    this.add.text(440, py - 6, part.specialTrait, {
+                        fontSize: '10px', fontFamily: 'Arial', color: '#ffaa44'
+                    });
+                }
+
+                if (!isEquipped) {
+                    partBg.on('pointerover', () => partBg.setStrokeStyle(1, 0x6688ff));
+                    partBg.on('pointerout', () => partBg.setStrokeStyle(1, 0x222233));
+                    partBg.on('pointerdown', () => {
+                        EquipmentSystem.attachPart(wpn.instanceId, slot, part.id);
+                        this.showWeaponPartDetail(wpn);
+                    });
+                }
+            });
+
+            if (compatible.length === 0 && !equippedPart) {
+                this.add.text(100, y + 38, '対応部品なし (ショップ/ドロップで入手)', {
+                    fontSize: '10px', fontFamily: 'Arial', color: '#444444'
+                });
+            }
+        });
+    }
+
+    // ===== AWAKENING TAB =====
+    showAwakeningTab() {
+        this.add.text(50, 88, 'キャラクターを選択して覚醒:', {
+            fontSize: '13px', fontFamily: 'Arial', color: '#cccccc'
+        });
+
+        this.characters.forEach((char, i) => {
+            const x = 50 + (i % 3) * 245;
+            const y = 115 + Math.floor(i / 3) * 90;
+            this.createAwakeningCard(x, y, char);
+        });
+    }
+
+    createAwakeningCard(x, y, char) {
+        const color = ATTRIBUTE_COLORS[char.attribute] || 0xffffff;
+        const charSave = this.save.characters[char.id] || { level: 1, awakening: 0 };
+        const awakening = charSave.awakening || 0;
+        const maxAwakening = 5;
+
+        const bg = this.add.rectangle(x + 105, y + 30, 215, 60, 0x1a1a33, 0.9)
+            .setStrokeStyle(1, awakening > 0 ? 0x664422 : 0x333355);
+
+        const charId = char.charId || char.id.replace('_normal', '');
+        const iconKey = `icon_${charId}`;
+        if (this.textures.exists(iconKey)) {
+            this.add.image(x + 30, y + 30, iconKey).setDisplaySize(36, 36);
+        } else {
+            this.add.rectangle(x + 30, y + 30, 36, 36, color);
+        }
+
+        this.add.text(x + 55, y + 12, char.name, {
+            fontSize: '13px', fontFamily: 'Arial', color: '#ffffff'
+        });
+
+        // Awakening stars
+        const awStr = '◆'.repeat(awakening) + '◇'.repeat(maxAwakening - awakening);
+        this.add.text(x + 55, y + 30, awStr, {
+            fontSize: '12px', fontFamily: 'Arial', color: awakening > 0 ? '#ffaa44' : '#555555'
+        });
+
+        // Stats bonus
+        if (awakening > 0) {
+            this.add.text(x + 55, y + 46, `全ステ+${awakening * 10}%`, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#ff8844'
+            });
+        }
+
+        if (awakening < maxAwakening) {
+            const cost = (awakening + 1) * 1000;
+            const canAfford = this.save.player.credits >= cost;
+
+            const awBtn = this.add.rectangle(x + 185, y + 30, 50, 40, canAfford ? 0x553322 : 0x222222)
+                .setInteractive({ useHandCursor: canAfford })
+                .setStrokeStyle(1, canAfford ? 0xff8844 : 0x333333);
+
+            this.add.text(x + 185, y + 22, '覚醒', {
+                fontSize: '11px', fontFamily: 'Arial', color: canAfford ? '#ffffff' : '#666666'
+            }).setOrigin(0.5);
+            this.add.text(x + 185, y + 37, `${cost}`, {
+                fontSize: '9px', fontFamily: 'Arial', color: canAfford ? '#ffcc44' : '#555555'
+            }).setOrigin(0.5);
+
+            if (canAfford) {
+                awBtn.on('pointerover', () => awBtn.setFillStyle(0x664433));
+                awBtn.on('pointerout', () => awBtn.setFillStyle(0x553322));
+                awBtn.on('pointerdown', () => {
+                    if (EquipmentSystem.awakenCharacter(char.id, cost)) {
+                        this.showAwakeningEffect(awakening + 1);
+                        this.time.delayedCall(800, () => this.showMain());
+                    }
+                });
+            }
+        } else {
+            this.add.text(x + 185, y + 30, 'MAX', {
+                fontSize: '12px', fontFamily: 'Arial', color: '#ffaa44'
+            }).setOrigin(0.5);
+        }
+    }
+
+    showAwakeningEffect(level) {
+        const text = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, `覚醒 Lv.${level}!`, {
+            fontSize: '32px', fontFamily: 'Arial', color: '#ffaa44',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(200);
+
+        this.tweens.add({
+            targets: text, y: text.y - 60, alpha: 0, scale: 1.3,
+            duration: 1200, ease: 'Power2',
+            onComplete: () => text.destroy()
         });
     }
 

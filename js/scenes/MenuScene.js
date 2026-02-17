@@ -4,6 +4,8 @@ class MenuScene extends Phaser.Scene {
     }
 
     create() {
+        AudioManager.playBGM('bgm_menu');
+
         const cx = GAME_WIDTH / 2;
 
         this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x111122);
@@ -14,8 +16,11 @@ class MenuScene extends Phaser.Scene {
             stroke: '#4488ff', strokeThickness: 2
         }).setOrigin(0.5);
 
-        // Player info
+        // Refill stamina before display
         const save = SaveManager.load();
+        SaveManager.refillStamina(save);
+
+        // Player info
         this.add.text(20, 70, `Lv.${save.player.level}  ${save.player.name}`, {
             fontSize: '14px', fontFamily: 'Arial', color: '#cccccc'
         });
@@ -23,7 +28,7 @@ class MenuScene extends Phaser.Scene {
             fontSize: '12px', fontFamily: 'Arial', color: '#aaaaaa'
         });
         this.add.text(20, 108, `電力: ${save.player.stamina}/120`, {
-            fontSize: '12px', fontFamily: 'Arial', color: '#88ff88'
+            fontSize: '12px', fontFamily: 'Arial', color: save.player.stamina >= 10 ? '#88ff88' : '#ff6666'
         });
 
         // Menu buttons
@@ -33,6 +38,7 @@ class MenuScene extends Phaser.Scene {
             { label: '強化', desc: 'キャラクター強化', action: () => this.scene.start('EnhanceScene') },
             { label: 'ショップ', desc: '武器・素材購入', action: () => this.scene.start('ShopScene') },
             { label: 'ギャラリー', desc: '回想シナリオ再生', action: () => this.scene.start('GalleryScene') },
+            { label: '設定', desc: '音量・表示設定', action: () => this.scene.start('SettingsScene') },
         ];
 
         buttons.forEach((btn, i) => {
