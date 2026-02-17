@@ -1,0 +1,128 @@
+[
+  {
+    "tableId": "credit_s",
+    "itemType": "currency",
+    "itemId": "credit",
+    "minQty": 10,
+    "maxQty": 30,
+    "chance": 1,
+    "notes": "確定ドロップ"
+  },
+  {
+    "tableId": "credit_m",
+    "itemType": "currency",
+    "itemId": "credit",
+    "minQty": 30,
+    "maxQty": 60,
+    "chance": 1,
+    "notes": "確定ドロップ"
+  },
+  {
+    "tableId": "credit_l",
+    "itemType": "currency",
+    "itemId": "credit",
+    "minQty": 60,
+    "maxQty": 120,
+    "chance": 1,
+    "notes": "確定ドロップ"
+  },
+  {
+    "tableId": "credit_xl",
+    "itemType": "currency",
+    "itemId": "credit",
+    "minQty": 150,
+    "maxQty": 300,
+    "chance": 1,
+    "notes": "確定ドロップ"
+  },
+  {
+    "tableId": "exp_s",
+    "itemType": "material",
+    "itemId": "exp_chip_s",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.4,
+    "notes": "小型EXPチップ"
+  },
+  {
+    "tableId": "exp_m",
+    "itemType": "material",
+    "itemId": "exp_chip_m",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.2,
+    "notes": "中型EXPチップ"
+  },
+  {
+    "tableId": "exp_l",
+    "itemType": "material",
+    "itemId": "exp_chip_l",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.1,
+    "notes": "大型EXPチップ"
+  },
+  {
+    "tableId": "wpn_r1",
+    "itemType": "weapon",
+    "itemId": "random_weapon_r1",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.08,
+    "notes": "★1武器ランダム"
+  },
+  {
+    "tableId": "wpn_r2",
+    "itemType": "weapon",
+    "itemId": "random_weapon_r2",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.04,
+    "notes": "★2武器ランダム"
+  },
+  {
+    "tableId": "wpn_r3",
+    "itemType": "weapon",
+    "itemId": "random_weapon_r3",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.02,
+    "notes": "★3武器ランダム"
+  },
+  {
+    "tableId": "wpn_r4",
+    "itemType": "weapon",
+    "itemId": "random_weapon_r4",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.005,
+    "notes": "★4武器ランダム（超低確率）"
+  },
+  {
+    "tableId": "mod_n",
+    "itemType": "module",
+    "itemId": "random_module_n",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.05,
+    "notes": "Nモジュール"
+  },
+  {
+    "tableId": "mod_r",
+    "itemType": "module",
+    "itemId": "random_module_r",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.02,
+    "notes": "Rモジュール"
+  },
+  {
+    "tableId": "mod_sr",
+    "itemType": "module",
+    "itemId": "random_module_sr",
+    "minQty": 1,
+    "maxQty": 1,
+    "chance": 0.005,
+    "notes": "SRモジュール"
+  }
+]

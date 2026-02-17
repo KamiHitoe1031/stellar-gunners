@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Stellar Gunners</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+
+    <!-- Events -->
+    <script src="js/events/EventsCenter.js"></script>
+
+    <!-- Constants -->
+    <script src="js/constants.js"></script>
+
+    <!-- Systems -->
+    <script src="js/systems/SaveManager.js"></script>
+    <script src="js/systems/DamageSystem.js"></script>
+    <script src="js/systems/ShieldSystem.js"></script>
+    <script src="js/systems/BreakSystem.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script src="js/systems/WaveManager.js"></script>
+    <script src="js/systems/DropSystem.js"></script>
+
+    <!-- Objects -->
+    <script src="js/objects/HealthBar.js"></script>
+    <script src="js/objects/Bullet.js"></script>
+    <script src="js/objects/BulletPool.js"></script>
+    <script src="js/objects/Player.js"></script>
+    <script src="js/objects/Enemy.js"></script>
+    <script src="js/objects/Boss.js"></script>
+    <script src="js/objects/EnemyPool.js"></script>
+
+    <!-- UI -->
+    <script src="js/ui/SkillButton.js"></script>
+    <script src="js/ui/PartyHUD.js"></script>
+    <script src="js/ui/BossHUD.js"></script>
+
+    <!-- Scenes -->
+    <script src="js/scenes/BootScene.js"></script>
+    <script src="js/scenes/PreloadScene.js"></script>
+    <script src="js/scenes/TitleScene.js"></script>
+    <script src="js/scenes/MenuScene.js"></script>
+    <script src="js/scenes/FormationScene.js"></script>
+    <script src="js/scenes/GameScene.js"></script>
+    <script src="js/scenes/UIScene.js"></script>
+    <script src="js/scenes/ResultScene.js"></script>
+
+    <!-- Main -->
+    <script src="js/main.js"></script>
+</body>
+</html>

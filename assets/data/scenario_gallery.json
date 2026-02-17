@@ -1,0 +1,90 @@
+[
+  {
+    "galleryId": "gal_01",
+    "scenarioId": "scenario_1_1",
+    "title": "出撃、ステラ部隊",
+    "chapter": 1,
+    "unlockCondition": "stage_1_1_clear",
+    "thumbnailKey": "thumb_1_1",
+    "category": "main_story",
+    "sortOrder": 1,
+    "description": "初めてのミッション。レイナ、セレナ、カイラの3人が出撃する。"
+  },
+  {
+    "galleryId": "gal_02",
+    "scenarioId": "scenario_1_2",
+    "title": "掃討の決意",
+    "chapter": 1,
+    "unlockCondition": "stage_1_2_clear",
+    "thumbnailKey": "thumb_1_2",
+    "category": "main_story",
+    "sortOrder": 2,
+    "description": "残存勢力との戦い。強まる虚晶体の反応。"
+  },
+  {
+    "galleryId": "gal_03",
+    "scenarioId": "scenario_1_3",
+    "title": "拠点の灯",
+    "chapter": 1,
+    "unlockCondition": "stage_1_3_clear",
+    "thumbnailKey": "thumb_1_3",
+    "category": "main_story",
+    "sortOrder": 3,
+    "description": "旧軍事施設を拠点に。希望の灯をともす。"
+  },
+  {
+    "galleryId": "gal_04",
+    "scenarioId": "scenario_1_5",
+    "title": "影の先遣",
+    "chapter": 1,
+    "unlockCondition": "stage_1_5_clear",
+    "thumbnailKey": "thumb_1_5",
+    "category": "main_story",
+    "sortOrder": 5,
+    "description": "XRシリーズの気配。不穏な予兆。"
+  },
+  {
+    "galleryId": "gal_05",
+    "scenarioId": "scenario_1_7",
+    "title": "暗影の狙撃手",
+    "chapter": 1,
+    "unlockCondition": "stage_1_7_clear",
+    "thumbnailKey": "thumb_1_7",
+    "category": "main_story",
+    "sortOrder": 7,
+    "description": "ノワール・シェイド合流。急襲作戦開始。"
+  },
+  {
+    "galleryId": "gal_06",
+    "scenarioId": "scenario_1_9",
+    "title": "凍てつく知性",
+    "chapter": 1,
+    "unlockCondition": "stage_1_9_clear",
+    "thumbnailKey": "thumb_1_9",
+    "category": "main_story",
+    "sortOrder": 9,
+    "description": "ミラ・フロスト合流。研究データ回収作戦。"
+  },
+  {
+    "galleryId": "gal_07",
+    "scenarioId": "scenario_1_11",
+    "title": "ステラ全員集結",
+    "chapter": 1,
+    "unlockCondition": "stage_1_11_clear",
+    "thumbnailKey": "thumb_1_11",
+    "category": "main_story",
+    "sortOrder": 11,
+    "description": "リリス・ブレイズ合流。ボス戦への覚悟。"
+  },
+  {
+    "galleryId": "gal_08",
+    "scenarioId": "scenario_1_12",
+    "title": "XR-07撃破",
+    "chapter": 1,
+    "unlockCondition": "stage_1_12_clear",
+    "thumbnailKey": "thumb_1_12",
+    "category": "main_story",
+    "sortOrder": 12,
+    "description": "都市廃墟のボス撃破。始まりの勝利。"
+  }
+]

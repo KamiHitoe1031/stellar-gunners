@@ -1,0 +1,86 @@
+[
+  {
+    "level": 1,
+    "xpRequired": 0,
+    "totalXp": 0,
+    "staminaBonus": 0,
+    "notes": "初期"
+  },
+  {
+    "level": 2,
+    "xpRequired": 100,
+    "totalXp": 100,
+    "staminaBonus": 0,
+    "notes": ""
+  },
+  {
+    "level": 3,
+    "xpRequired": 150,
+    "totalXp": 250,
+    "staminaBonus": 0,
+    "notes": ""
+  },
+  {
+    "level": 4,
+    "xpRequired": 200,
+    "totalXp": 450,
+    "staminaBonus": 0,
+    "notes": ""
+  },
+  {
+    "level": 5,
+    "xpRequired": 300,
+    "totalXp": 750,
+    "staminaBonus": 5,
+    "notes": "電力+5"
+  },
+  {
+    "level": 10,
+    "xpRequired": 600,
+    "totalXp": 3750,
+    "staminaBonus": 5,
+    "notes": "電力+5"
+  },
+  {
+    "level": 15,
+    "xpRequired": 1000,
+    "totalXp": 8750,
+    "staminaBonus": 5,
+    "notes": "電力+5"
+  },
+  {
+    "level": 20,
+    "xpRequired": 1500,
+    "totalXp": 16250,
+    "staminaBonus": 10,
+    "notes": "電力+10"
+  },
+  {
+    "level": 25,
+    "xpRequired": 2000,
+    "totalXp": 26250,
+    "staminaBonus": 10,
+    "notes": "電力+10"
+  },
+  {
+    "level": 30,
+    "xpRequired": 3000,
+    "totalXp": 41250,
+    "staminaBonus": 10,
+    "notes": "電力+10"
+  },
+  {
+    "level": 40,
+    "xpRequired": 5000,
+    "totalXp": 81250,
+    "staminaBonus": 20,
+    "notes": "電力+20"
+  },
+  {
+    "level": 50,
+    "xpRequired": 8000,
+    "totalXp": 161250,
+    "staminaBonus": 20,
+    "notes": "電力+20"
+  }
+]

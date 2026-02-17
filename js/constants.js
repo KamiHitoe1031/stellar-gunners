@@ -1,0 +1,61 @@
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 600;
+
+const ATTRIBUTE_CHART = {
+    bio:       { strongVs: 'psychic',  weakVs: 'machine' },
+    psychic:   { strongVs: 'machine',  weakVs: 'bio' },
+    machine:   { strongVs: 'bio',      weakVs: 'psychic' },
+    corrosion: { strongVs: 'immunity', weakVs: 'immunity' },
+    immunity:  { strongVs: 'corrosion', weakVs: 'corrosion' }
+};
+
+const ATTRIBUTE_COLORS = {
+    bio:       0xff4444,
+    psychic:   0x44cc44,
+    machine:   0x4488ff,
+    corrosion: 0xaa44dd,
+    immunity:  0xddcc44
+};
+
+const ATTRIBUTE_NAMES = {
+    bio:       '生体',
+    psychic:   '霊脳',
+    machine:   '機械',
+    corrosion: '侵蝕',
+    immunity:  '防疫'
+};
+
+const TYPE_NAMES = {
+    dps:     '火力',
+    support: '補助',
+    tank:    '防御',
+    medic:   '医療',
+    breaker: '強襲'
+};
+
+const WEAPON_CONFIGS = {
+    pistol:         { range: 250, fireRate: 5.0,  magazineSize: 12, reloadTime: 1200, spreadAngle: 3,  bulletSpeed: 500 },
+    assault_rifle:  { range: 300, fireRate: 6.0,  magazineSize: 30, reloadTime: 1800, spreadAngle: 5,  bulletSpeed: 450 },
+    shotgun:        { range: 150, fireRate: 1.2,  magazineSize: 6,  reloadTime: 2000, spreadAngle: 25, bulletSpeed: 400, pelletsPerShot: 5 },
+    sniper_rifle:   { range: 450, fireRate: 0.8,  magazineSize: 5,  reloadTime: 2500, spreadAngle: 0,  bulletSpeed: 700, piercing: true },
+    launcher:       { range: 280, fireRate: 0.6,  magazineSize: 3,  reloadTime: 3000, spreadAngle: 0,  bulletSpeed: 300, explosionRadius: 60 }
+};
+
+const ADVANTAGE_MULTIPLIER = 1.3;
+const DISADVANTAGE_MULTIPLIER = 0.7;
+
+const TYPE_BONUS = {
+    dps:     { atkMult: 1.15 },
+    support: {},
+    tank:    { defMult: 1.20, shieldMult: 1.20 },
+    medic:   {},
+    breaker: { breakMult: 1.30 }
+};
+
+const BREAK_DURATION = 5000;
+const BREAK_DAMAGE_BONUS = 1.5;
+
+const SAVE_KEY = 'stellar_gunners_save';
+
+const FIELD_WIDTH = 1200;
+const FIELD_HEIGHT = 900;
