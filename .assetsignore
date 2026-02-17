@@ -1,0 +1,42 @@
+# Secrets - NEVER upload
+LOCAL_SECRETS.md
+.env
+
+# Reference materials
+siryou/
+docs/
+
+# Tools and scripts
+tools/
+*.py
+*.xlsx
+
+# Raw unprocessed images (large files)
+assets/images/characters/
+assets/images/portraits/
+assets/images/enemies/
+assets/images/ui/
+assets/images/backgrounds/
+
+# Dev files
+.git/
+.gitignore
+.claude/
+__pycache__/
+node_modules/
+*.log
+*.md
+wrangler.jsonc
+.assetsignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep these (not ignored):
+# index.html
+# css/
+# js/
+# assets/data/
+# assets/images/game/
+# assets/audio/

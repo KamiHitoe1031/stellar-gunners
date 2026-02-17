@@ -26,13 +26,13 @@ class TransformPotScene extends Phaser.Scene {
         backBtn.on('pointerout', () => backBtn.setColor('#88aacc'));
 
         // Title
-        this.add.text(GAME_WIDTH / 2, 30, '変化の壷', {
-            fontSize: '26px', fontFamily: 'Arial', color: '#ffaa44',
+        this.add.text(GAME_WIDTH / 2, 30, '量子変換炉', {
+            fontSize: '26px', fontFamily: 'Arial', color: '#44ccff',
             stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5);
 
-        this.add.text(GAME_WIDTH / 2, 58, 'アイテムを入れると別のアイテムに変化します', {
-            fontSize: '12px', fontFamily: 'Arial', color: '#998866'
+        this.add.text(GAME_WIDTH / 2, 58, '装備を量子分解し別の装備に再構成します', {
+            fontSize: '12px', fontFamily: 'Arial', color: '#667799'
         }).setOrigin(0.5);
 
         // Cost display
@@ -42,7 +42,7 @@ class TransformPotScene extends Phaser.Scene {
             stroke: '#000000', strokeThickness: 1
         }).setOrigin(1, 0);
 
-        this.costText = this.add.text(GAME_WIDTH - 20, 35, `変化コスト: ${TransformPotSystem.COST_PER_USE}`, {
+        this.costText = this.add.text(GAME_WIDTH - 20, 35, `変換コスト: ${TransformPotSystem.COST_PER_USE}`, {
             fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa'
         }).setOrigin(1, 0);
 
@@ -60,19 +60,19 @@ class TransformPotScene extends Phaser.Scene {
         this.resultsContainer = this.add.container(0, 0);
 
         // Transform button
-        this.transformBtn = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 50, 180, 44, 0x664422)
+        this.transformBtn = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 50, 180, 44, 0x113355)
             .setInteractive({ useHandCursor: true })
-            .setStrokeStyle(2, 0xaa7733);
-        this.transformBtnText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, '変化させる', {
-            fontSize: '18px', fontFamily: 'Arial', color: '#ffcc88'
+            .setStrokeStyle(2, 0x3388cc);
+        this.transformBtnText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, '変換実行', {
+            fontSize: '18px', fontFamily: 'Arial', color: '#88ccff'
         }).setOrigin(0.5);
 
         this.transformBtn.on('pointerover', () => {
             if (this.potItems.length > 0 && !this.isTransforming) {
-                this.transformBtn.setFillStyle(0x885533);
+                this.transformBtn.setFillStyle(0x1a4466);
             }
         });
-        this.transformBtn.on('pointerout', () => this.transformBtn.setFillStyle(0x664422));
+        this.transformBtn.on('pointerout', () => this.transformBtn.setFillStyle(0x113355));
         this.transformBtn.on('pointerdown', () => this.doTransform());
 
         this.updateTransformButton();
@@ -82,32 +82,42 @@ class TransformPotScene extends Phaser.Scene {
         const cx = GAME_WIDTH / 2;
         const cy = 200;
 
-        // Pot body
+        // Reactor body (sci-fi hexagonal chamber)
         const g = this.add.graphics();
-        g.fillStyle(0x8B4513, 0.8);
-        g.fillRoundedRect(cx - 50, cy - 30, 100, 80, 10);
-        g.fillStyle(0x6B3410, 0.9);
-        g.fillRoundedRect(cx - 55, cy - 35, 110, 20, 8);
-        g.fillStyle(0xA0522D, 0.6);
-        g.fillEllipse(cx, cy - 35, 90, 14);
-        g.lineStyle(2, 0xcc8844, 0.5);
-        g.strokeRoundedRect(cx - 50, cy - 30, 100, 80, 10);
+        g.fillStyle(0x112244, 0.9);
+        g.fillRoundedRect(cx - 55, cy - 35, 110, 85, 6);
+        g.fillStyle(0x0a1a33, 0.95);
+        g.fillRoundedRect(cx - 50, cy - 30, 100, 75, 4);
+        // Top panel
+        g.fillStyle(0x1a3355, 0.9);
+        g.fillRoundedRect(cx - 55, cy - 40, 110, 16, 4);
+        // Glow ring
+        g.lineStyle(2, 0x44aaff, 0.7);
+        g.strokeRoundedRect(cx - 55, cy - 35, 110, 85, 6);
+        // Inner glow
+        g.lineStyle(1, 0x2288cc, 0.4);
+        g.strokeRoundedRect(cx - 48, cy - 28, 96, 69, 3);
+        // Energy indicators (top)
+        g.fillStyle(0x44ccff, 0.6);
+        g.fillCircle(cx - 35, cy - 33, 3);
+        g.fillCircle(cx, cy - 33, 3);
+        g.fillCircle(cx + 35, cy - 33, 3);
 
-        // Pot label
-        this.add.text(cx, cy + 10, '壷', {
-            fontSize: '28px', fontFamily: 'Arial', color: '#ffddaa',
-            stroke: '#6B3410', strokeThickness: 3
+        // Reactor label
+        this.add.text(cx, cy + 12, 'Q-CONV', {
+            fontSize: '20px', fontFamily: 'Arial', color: '#44ccff',
+            stroke: '#0a1a33', strokeThickness: 3
         }).setOrigin(0.5);
 
         // Slot indicators
         this.potSlots = [];
         for (let i = 0; i < TransformPotSystem.POT_CAPACITY; i++) {
             const sx = cx - 40 + i * 40;
-            const sy = cy - 15;
-            const slot = this.add.rectangle(sx, sy, 30, 30, 0x443322, 0.5)
-                .setStrokeStyle(1, 0x886644);
+            const sy = cy - 12;
+            const slot = this.add.rectangle(sx, sy, 30, 30, 0x0a1a33, 0.7)
+                .setStrokeStyle(1, 0x2266aa);
             const slotText = this.add.text(sx, sy, '', {
-                fontSize: '10px', fontFamily: 'Arial', color: '#ffcc88'
+                fontSize: '10px', fontFamily: 'Arial', color: '#44ccff'
             }).setOrigin(0.5);
             this.potSlots.push({ bg: slot, text: slotText });
         }
@@ -241,8 +251,8 @@ class TransformPotScene extends Phaser.Scene {
         this.potSlots.forEach((slot, i) => {
             if (i < this.potItems.length) {
                 const item = this.potItems[i];
-                slot.bg.setFillStyle(0x664422, 0.8);
-                slot.bg.setStrokeStyle(1, 0xffaa44);
+                slot.bg.setFillStyle(0x113355, 0.9);
+                slot.bg.setStrokeStyle(1, 0x44ccff);
                 slot.text.setText(item.itemDef.name.charAt(0));
 
                 slot.bg.setInteractive({ useHandCursor: true });
@@ -254,8 +264,8 @@ class TransformPotScene extends Phaser.Scene {
                     this.updateTransformButton();
                 });
             } else {
-                slot.bg.setFillStyle(0x443322, 0.5);
-                slot.bg.setStrokeStyle(1, 0x886644);
+                slot.bg.setFillStyle(0x0a1a33, 0.7);
+                slot.bg.setStrokeStyle(1, 0x2266aa);
                 slot.text.setText('');
                 slot.bg.disableInteractive();
             }
@@ -264,15 +274,15 @@ class TransformPotScene extends Phaser.Scene {
 
     updateTransformButton() {
         const canUse = this.potItems.length > 0 && TransformPotSystem.canAfford() && !this.isTransforming;
-        this.transformBtn.setFillStyle(canUse ? 0x664422 : 0x332211);
-        this.transformBtnText.setColor(canUse ? '#ffcc88' : '#665544');
+        this.transformBtn.setFillStyle(canUse ? 0x113355 : 0x0a1a2a);
+        this.transformBtnText.setColor(canUse ? '#88ccff' : '#334455');
 
         if (!TransformPotSystem.canAfford()) {
             this.transformBtnText.setText('クレジット不足');
         } else if (this.potItems.length === 0) {
-            this.transformBtnText.setText('アイテムを入れる');
+            this.transformBtnText.setText('装備を投入する');
         } else {
-            this.transformBtnText.setText(`変化させる (${this.potItems.length}個)`);
+            this.transformBtnText.setText(`変換実行 (${this.potItems.length}個)`);
         }
     }
 
@@ -337,8 +347,8 @@ class TransformPotScene extends Phaser.Scene {
 
         if (this.resultItems.length === 0) return;
 
-        const title = this.add.text(startX, startY, '変化結果:', {
-            fontSize: '14px', fontFamily: 'Arial', color: '#ffaa44'
+        const title = this.add.text(startX, startY, '変換結果:', {
+            fontSize: '14px', fontFamily: 'Arial', color: '#44ccff'
         });
         this.resultsContainer.add(title);
 
@@ -354,8 +364,8 @@ class TransformPotScene extends Phaser.Scene {
             });
             this.resultsContainer.add(arrow);
 
-            const arrowIcon = this.add.text(startX, y + 16, isSame ? '→ (変化失敗)' : '→', {
-                fontSize: '12px', fontFamily: 'Arial', color: isSame ? '#ff6666' : '#ffaa44'
+            const arrowIcon = this.add.text(startX, y + 16, isSame ? '→ (変換失敗)' : '→', {
+                fontSize: '12px', fontFamily: 'Arial', color: isSame ? '#ff6666' : '#44ccff'
             });
             this.resultsContainer.add(arrowIcon);
 

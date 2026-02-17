@@ -40,8 +40,17 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.setAlpha(1);
         this.setDepth(40);
 
+        // Set display size based on category
+        let displaySize = 24;
+        if (enemyData.category === 'elite') displaySize = 40;
+        if (enemyData.category === 'boss') displaySize = 72;
+        this._displaySize = displaySize;
+        this.setDisplaySize(displaySize, displaySize);
+        if (this.body) this.body.setSize(displaySize - 4, displaySize - 4);
+
+        const barWidth = Math.max(displaySize, 32);
         if (!this.hpBar) {
-            this.hpBar = new HealthBar(this.scene, this.x - 16, this.y - 20, 32, 4, 0xff0000);
+            this.hpBar = new HealthBar(this.scene, this.x - barWidth / 2, this.y - displaySize / 2 - 6, barWidth, 4, 0xff0000);
         }
         this.hpBar.setVisible(true);
         this.hpBar.setPercent(1);
@@ -80,7 +89,9 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         if (this.isDead || !this.active) return;
 
         if (this.hpBar) {
-            this.hpBar.setPosition(this.x - 16, this.y - 20);
+            const ds = this._displaySize || 24;
+            const barW = Math.max(ds, 32);
+            this.hpBar.setPosition(this.x - barW / 2, this.y - ds / 2 - 6);
         }
 
         if (!player || player.isDead) return;

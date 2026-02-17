@@ -98,20 +98,47 @@ class GameScene extends Phaser.Scene {
     }
 
     createFloor() {
-        const g = this.add.graphics();
-        g.fillStyle(0x1a1a2e, 1);
-        g.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-        g.lineStyle(1, 0x222244, 0.3);
-        for (let x = 0; x <= FIELD_WIDTH; x += 64) {
-            g.lineBetween(x, 0, x, FIELD_HEIGHT);
+        // Try to use a background image based on chapter
+        const chapter = this.stageData.chapter || 1;
+        const bgMap = {
+            1: 'bg_battle_city',
+            2: 'bg_battle_lab',
+            3: 'bg_battle_city'
+        };
+        const bgKey = bgMap[chapter] || 'bg_battle_city';
+
+        if (this.textures.exists(bgKey)) {
+            const bg = this.add.image(FIELD_WIDTH / 2, FIELD_HEIGHT / 2, bgKey);
+            bg.setDisplaySize(FIELD_WIDTH, FIELD_HEIGHT);
+            bg.setDepth(0);
+            // Semi-transparent grid overlay for gameplay clarity
+            const g = this.add.graphics();
+            g.lineStyle(1, 0x222244, 0.15);
+            for (let x = 0; x <= FIELD_WIDTH; x += 64) {
+                g.lineBetween(x, 0, x, FIELD_HEIGHT);
+            }
+            for (let y = 0; y <= FIELD_HEIGHT; y += 64) {
+                g.lineBetween(0, y, FIELD_WIDTH, y);
+            }
+            g.lineStyle(2, 0x4444aa, 0.3);
+            g.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+            g.setDepth(1);
+        } else {
+            // Fallback grid floor
+            const g = this.add.graphics();
+            g.fillStyle(0x1a1a2e, 1);
+            g.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+            g.lineStyle(1, 0x222244, 0.3);
+            for (let x = 0; x <= FIELD_WIDTH; x += 64) {
+                g.lineBetween(x, 0, x, FIELD_HEIGHT);
+            }
+            for (let y = 0; y <= FIELD_HEIGHT; y += 64) {
+                g.lineBetween(0, y, FIELD_WIDTH, y);
+            }
+            g.lineStyle(2, 0x4444aa, 0.5);
+            g.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+            g.setDepth(0);
         }
-        for (let y = 0; y <= FIELD_HEIGHT; y += 64) {
-            g.lineBetween(0, y, FIELD_WIDTH, y);
-        }
-        // World boundary
-        g.lineStyle(2, 0x4444aa, 0.5);
-        g.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-        g.setDepth(0);
     }
 
     setupCollisions() {

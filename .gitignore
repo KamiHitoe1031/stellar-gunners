@@ -5,3 +5,12 @@ Thumbs.db
 .env
 .claude/
 __pycache__/
+LOCAL_SECRETS.md
+siryou/
+
+# Raw AI-generated images (large, only processed versions needed)
+assets/images/characters/
+assets/images/portraits/
+assets/images/enemies/
+assets/images/ui/
+assets/images/backgrounds/

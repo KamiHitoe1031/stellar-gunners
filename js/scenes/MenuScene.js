@@ -29,7 +29,7 @@ class MenuScene extends Phaser.Scene {
         // Menu buttons
         const buttons = [
             { label: '出撃', desc: 'ステージ選択・バトル', action: () => this.scene.start('FormationScene') },
-            { label: '変化の壷', desc: 'アイテムを別のアイテムに変化', action: () => this.scene.start('TransformPotScene') },
+            { label: '量子変換炉', desc: '装備を量子分解・再構成', action: () => this.scene.start('TransformPotScene') },
             { label: '編成', desc: 'パーティ編成 (準備中)', action: () => {} },
             { label: '強化', desc: 'キャラ・武器強化 (準備中)', action: () => {} },
             { label: 'ショップ', desc: '素材・武器購入 (準備中)', action: () => {} },

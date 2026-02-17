@@ -15,9 +15,18 @@ class PartyHUD {
             const x = startX + i * 130;
             const y = startY;
 
-            const color = ATTRIBUTE_COLORS[member.attribute] || 0xffffff;
-            const icon = s.add.rectangle(x + 16, y + 16, 32, 32, color, 0.9)
-                .setScrollFactor(0).setDepth(200);
+            const charId = member.charId || member.id.replace('_normal', '');
+            const iconKey = `icon_${charId}`;
+            let icon;
+            if (s.textures.exists(iconKey)) {
+                icon = s.add.image(x + 16, y + 16, iconKey)
+                    .setDisplaySize(32, 32)
+                    .setScrollFactor(0).setDepth(200);
+            } else {
+                const color = ATTRIBUTE_COLORS[member.attribute] || 0xffffff;
+                icon = s.add.rectangle(x + 16, y + 16, 32, 32, color, 0.9)
+                    .setScrollFactor(0).setDepth(200);
+            }
             const iconBorder = s.add.rectangle(x + 16, y + 16, 32, 32)
                 .setScrollFactor(0).setDepth(201)
                 .setStrokeStyle(2, 0xffffff);

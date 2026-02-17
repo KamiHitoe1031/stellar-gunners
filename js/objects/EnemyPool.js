@@ -46,7 +46,6 @@ class EnemyPool {
         this.scene.add.existing(boss);
         this.scene.physics.add.existing(boss);
         boss.init(enemyData);
-        boss.body.setSize(64, 64);
         this.group.add(boss);
         this.pool.push(boss);
         this.activeBoss = boss;

@@ -143,7 +143,15 @@ class FormationScene extends Phaser.Scene {
             .setInteractive({ useHandCursor: true })
             .setStrokeStyle(isSelected ? 2 : 1, isSelected ? 0xffcc00 : 0x333355);
 
-        const icon = this.add.rectangle(x + 30, y + 40, 40, 40, color);
+        const charId = char.charId || char.id.replace('_normal', '');
+        const iconKey = `icon_${charId}`;
+        let icon;
+        if (this.textures.exists(iconKey)) {
+            icon = this.add.image(x + 30, y + 40, iconKey)
+                .setDisplaySize(40, 40);
+        } else {
+            icon = this.add.rectangle(x + 30, y + 40, 40, 40, color);
+        }
 
         const rarityStr = '★'.repeat(char.rarity);
         this.add.text(x + 60, y + 15, rarityStr, {

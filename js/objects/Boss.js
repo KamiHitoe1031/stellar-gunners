@@ -74,7 +74,7 @@ class Boss extends Enemy {
         if (this.isDead || !this.active) return;
 
         if (this.hpBar) {
-            this.hpBar.setPosition(this.x - 32, this.y - 40);
+            this.hpBar.setPosition(this.x - 36, this.y - 44);
         }
 
         if (this.breakSystem.isBroken) {
