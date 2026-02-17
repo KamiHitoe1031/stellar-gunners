@@ -206,11 +206,22 @@ class FormationScene extends Phaser.Scene {
             this.characters.find(c => c.id === id)
         ).filter(Boolean);
 
-        this.scene.start('GameScene', {
+        const battleData = {
             stageId: this.selectedStage.id,
             stageData: this.selectedStage,
             party: partyData
-        });
+        };
+
+        // Check for pre-battle scenario
+        const scenarioId = this.selectedStage.scenarioId;
+        if (scenarioId && scenarioId !== '') {
+            this.scene.start('ScenarioScene', {
+                scenarioId: scenarioId,
+                onComplete: { scene: 'GameScene', data: battleData }
+            });
+        } else {
+            this.scene.start('GameScene', battleData);
+        }
     }
 
     createBackButton(action) {

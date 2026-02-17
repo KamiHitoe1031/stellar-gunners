@@ -107,4 +107,57 @@ class SaveManager {
         const save = this.load();
         return save.readScenarios[scenarioId]?.includes(seqNo) || false;
     }
+
+    static getCharLevel(charId) {
+        const save = this.load();
+        return save.characters[charId]?.level || 1;
+    }
+
+    static getCharExp(charId) {
+        const save = this.load();
+        return save.characters[charId]?.exp || 0;
+    }
+
+    static levelUpCharacter(charId, progressionData) {
+        const save = this.load();
+        if (!save.characters[charId]) {
+            save.characters[charId] = { level: 1, exp: 0, breakthroughCount: 0, awakening: 0 };
+        }
+        const charSave = save.characters[charId];
+        const currentLevel = charSave.level;
+
+        // Find next level XP requirement
+        const nextLevelData = progressionData.find(p => p.level === currentLevel + 1);
+        if (!nextLevelData) return { success: false, reason: 'max_level' };
+
+        const cost = nextLevelData.xpRequired;
+        if (save.player.credits < cost) return { success: false, reason: 'no_credits', needed: cost };
+
+        save.player.credits -= cost;
+        charSave.level += 1;
+        this.save(save);
+        return { success: true, newLevel: charSave.level, creditsSpent: cost };
+    }
+
+    static getCharStats(charData, level) {
+        return {
+            hp: charData.hp + charData.growthHp * (level - 1),
+            atk: charData.atk + charData.growthAtk * (level - 1),
+            def: charData.def + charData.growthDef * (level - 1),
+            shield: charData.shield + charData.growthShield * (level - 1)
+        };
+    }
+
+    static addInventoryItem(itemId, amount) {
+        const save = this.load();
+        if (!save.inventory[itemId]) save.inventory[itemId] = 0;
+        save.inventory[itemId] += amount;
+        this.save(save);
+        return save;
+    }
+
+    static getInventory() {
+        const save = this.load();
+        return save.inventory || {};
+    }
 }

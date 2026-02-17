@@ -19,6 +19,11 @@ class ResultScene extends Phaser.Scene {
         const cx = GAME_WIDTH / 2;
         this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0a1e);
 
+        // Unlock gallery entries on stage clear
+        if (!this.isGameOver) {
+            this.unlockGallery(this.stageData.id);
+        }
+
         // Result header
         const headerColor = this.isGameOver ? '#ff4444' : '#00ff88';
         const headerText = this.isGameOver ? 'MISSION FAILED' : 'MISSION COMPLETE';
@@ -135,5 +140,22 @@ class ResultScene extends Phaser.Scene {
         menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
         menuBtn.on('pointerover', () => menuBtn.setFillStyle(0x335555));
         menuBtn.on('pointerout', () => menuBtn.setFillStyle(0x224444));
+    }
+
+    unlockGallery(stageId) {
+        const gallery = this.cache.json.get('scenario_gallery');
+        if (!gallery) return;
+        const save = SaveManager.load();
+        if (!save.gallery) save.gallery = { unlockedIds: [] };
+
+        const unlockKey = stageId + '_clear';
+        gallery.forEach(entry => {
+            if (entry.unlockCondition === unlockKey) {
+                if (!save.gallery.unlockedIds.includes(entry.galleryId)) {
+                    save.gallery.unlockedIds.push(entry.galleryId);
+                }
+            }
+        });
+        SaveManager.save(save);
     }
 }

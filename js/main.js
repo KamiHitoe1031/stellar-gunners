@@ -26,6 +26,10 @@ const config = {
         GameScene,
         UIScene,
         ResultScene,
+        ScenarioScene,
+        GalleryScene,
+        EnhanceScene,
+        ShopScene,
         TransformPotScene
     ]
 };
