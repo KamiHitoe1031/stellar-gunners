@@ -36,10 +36,13 @@ class UIScene extends Phaser.Scene {
             stroke: '#000000', strokeThickness: 1
         }).setOrigin(1, 0).setScrollFactor(0).setDepth(200);
 
-        // Skill buttons
+        // Skill buttons with icons and names from active character
         const skillY = GAME_HEIGHT - 50;
-        this.skill1Btn = new SkillButton(this, GAME_WIDTH - 200, skillY, 'Q:SK1', 'Q');
-        this.skill2Btn = new SkillButton(this, GAME_WIDTH - 135, skillY, 'E:SK2', 'E');
+        const activeChar = this.partyData[0];
+        const sk1Icon = this.getSkillIconKey(activeChar, 'skill1');
+        const sk2Icon = this.getSkillIconKey(activeChar, 'skill2');
+        this.skill1Btn = new SkillButton(this, GAME_WIDTH - 200, skillY, 'Q', activeChar?.skill1Name || 'Skill1', sk1Icon);
+        this.skill2Btn = new SkillButton(this, GAME_WIDTH - 135, skillY, 'E', activeChar?.skill2Name || 'Skill2', sk2Icon);
 
         // ULT button
         this.ultBtn = new UltButton(this, GAME_WIDTH - 65, skillY);
@@ -101,6 +104,20 @@ class UIScene extends Phaser.Scene {
 
     onCharSwitched(data) {
         this.partyHUD.highlightActive(data.charId);
+
+        // Update skill buttons for the new active character
+        const charData = this.partyData.find(p => p.id === data.charId) ||
+                          this.partyData[data.index];
+        if (charData) {
+            this.skill1Btn.updateSkill(
+                charData.skill1Name || 'Skill1',
+                this.getSkillIconKey(charData, 'skill1')
+            );
+            this.skill2Btn.updateSkill(
+                charData.skill2Name || 'Skill2',
+                this.getSkillIconKey(charData, 'skill2')
+            );
+        }
     }
 
     onWaveStarted(data) {
@@ -233,16 +250,30 @@ class UIScene extends Phaser.Scene {
             const x = startX + i * 45;
             const char = this.partyData[i];
             const color = ATTRIBUTE_COLORS[char.attribute] || 0xffffff;
+            const charId = char.charId || char.id.replace('_normal', '');
+            const iconKey = `icon_${charId}`;
 
-            const btn = this.add.circle(x, y, 16, color, 0.4)
-                .setStrokeStyle(2, color, 0.8)
+            // Background circle
+            const btn = this.add.circle(x, y, 18, 0x111122, 0.8)
+                .setStrokeStyle(2, color, 0.9)
                 .setInteractive({ useHandCursor: true })
                 .setScrollFactor(0).setDepth(200);
 
-            this.add.text(x, y, `${i + 1}`, {
-                fontSize: '14px', fontFamily: 'Arial', color: '#ffffff',
+            // Character icon or fallback
+            if (this.textures.exists(iconKey)) {
+                this.add.image(x, y, iconKey)
+                    .setDisplaySize(28, 28)
+                    .setScrollFactor(0).setDepth(201);
+            } else {
+                this.add.circle(x, y, 12, color, 0.5)
+                    .setScrollFactor(0).setDepth(201);
+            }
+
+            // Key number
+            this.add.text(x + 12, y - 14, `${i + 1}`, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#ffcc00',
                 stroke: '#000000', strokeThickness: 2
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(202);
 
             btn.on('pointerdown', () => {
                 const gameScene = this.scene.get('GameScene');
@@ -253,6 +284,26 @@ class UIScene extends Phaser.Scene {
 
     getJoystickInput() {
         return this.joystickData;
+    }
+
+    getSkillIconKey(charData, skillSlot) {
+        if (!charData) return 'icon_skill_shoot';
+        const name = skillSlot === 'skill1' ? charData.skill1Name : charData.skill2Name;
+        const dmgMult = skillSlot === 'skill1' ? charData.skill1DmgMult : charData.skill2DmgMult;
+
+        if (!name) return 'icon_skill_shoot';
+
+        // Match by skill name keywords
+        if (name.includes('ヒール') || name.includes('リジェネ') || name.includes('サンクチュアリ')) return 'icon_skill_heal';
+        if (name.includes('シールド') || name.includes('アイアン') || name.includes('フォートレス')) return 'icon_skill_shield';
+        if (name.includes('ブースト') || name.includes('タクティカル')) return 'icon_skill_buff';
+        if (name.includes('マーク') || name.includes('サプレッション')) return 'icon_skill_debuff';
+        if (name.includes('グレネード') || name.includes('レーザー') || name.includes('フィールド')) return 'icon_skill_aoe';
+        if (name.includes('ファントム') || name.includes('ブレイク')) return 'icon_skill_break';
+
+        // Fallback by damage multiplier
+        if (dmgMult > 0) return 'icon_skill_shoot';
+        return 'icon_skill_buff';
     }
 
     cleanup() {

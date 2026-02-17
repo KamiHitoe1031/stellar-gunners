@@ -132,6 +132,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 // Flicker effect during dodge
                 this.setAlpha(Math.sin(this.dodgeTimer * 0.03) > 0 ? 0.3 : 0.8);
                 this.nameLabel.setPosition(this.x, this.y - 24);
+                // Dodge trail (throttled)
+                this._dodgeTrailTimer = (this._dodgeTrailTimer || 0) + delta;
+                if (this._dodgeTrailTimer >= 60 && this.scene.effects) {
+                    this._dodgeTrailTimer = 0;
+                    this.scene.effects.dodgeTrail(this.x, this.y, this.dodgeDirX, this.dodgeDirY, this.attribute);
+                }
                 return;
             }
         }
@@ -307,6 +313,12 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                     explosionRadius: this.weaponConfig.explosionRadius || 0
                 }
             );
+        }
+
+        // Muzzle flash effect
+        const gameScene = this.scene;
+        if (gameScene.effects) {
+            gameScene.effects.muzzleFlash(this.x, this.y, baseAngle);
         }
     }
 

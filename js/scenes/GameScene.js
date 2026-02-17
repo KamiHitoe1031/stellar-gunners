@@ -54,6 +54,9 @@ class GameScene extends Phaser.Scene {
         // Enemy pool
         this.enemyPool = new EnemyPool(this, 30);
 
+        // Effect system
+        this.effects = new EffectSystem(this);
+
         // Wave manager
         this.waveManager = new WaveManager(this);
         this.waveManager.init(this.stageData, this.enemiesData);
@@ -197,6 +200,19 @@ class GameScene extends Phaser.Scene {
         const killed = enemy.takeDamage(result.damage);
         this.totalDamageDealt += result.damage;
 
+        // Hit effect
+        const attrCol = ATTRIBUTE_COLORS[bullet.attribute] || 0xffffff;
+        if (result.isCrit) {
+            this.effects.critSpark(enemy.x, enemy.y);
+        } else {
+            this.effects.hitImpact(enemy.x, enemy.y, attrCol);
+        }
+
+        // Explosion for launcher-type bullets
+        if (bullet.explosionRadius > 0) {
+            this.effects.explosion(bullet.x, bullet.y, bullet.explosionRadius);
+        }
+
         // Charge ULT gauge on hit
         if (this.activePlayer) {
             this.skillSystem.addUltGauge(this.activePlayer.charId, ULT_CHARGE_ON_DEAL);
@@ -206,6 +222,10 @@ class GameScene extends Phaser.Scene {
         this.showDamageNumber(enemy.x, enemy.y - 20, result.damage, result.isCrit);
 
         if (killed) {
+            // Death effect
+            const enemyCol = ATTRIBUTE_COLORS[enemy.attribute] || 0xff4444;
+            const enemySize = enemy._displaySize || 28;
+            this.effects.enemyDeath(enemy.x, enemy.y, enemyCol, enemySize);
             // Bonus ULT charge on kill
             if (this.activePlayer) {
                 this.skillSystem.addUltGauge(this.activePlayer.charId, ULT_CHARGE_ON_KILL);
@@ -233,10 +253,13 @@ class GameScene extends Phaser.Scene {
 
         if (!bullet.piercing) {
             bullet.deactivate();
+        } else {
+            // Piercing trail effect
+            this.effects.piercingTrail(bullet.x, bullet.y, bullet.rotation, attrCol);
         }
     }
 
-    onEnemyBulletHitPlayer(bullet, player) {
+    onEnemyBulletHitPlayer(player, bullet) {
         if (!bullet.active || !player.active || player.isDead) return;
         if (bullet.isPlayerBullet) return;
 
@@ -260,9 +283,16 @@ class GameScene extends Phaser.Scene {
             this.skillSystem.addUltGauge(this.activePlayer.charId, ULT_CHARGE_ON_RECEIVE);
         }
 
+        const beforeShield = dmg;
         dmg = this.shieldSystem.applyDamage(dmg);
+        if (beforeShield > dmg && beforeShield - dmg > 0) {
+            // Shield absorbed some damage
+            this.effects.shieldAbsorb(player.x, player.y);
+        }
         if (dmg > 0) {
             player.takeDamage(dmg);
+            // Hit impact on player
+            this.effects.hitImpact(player.x, player.y, 0xff4444);
 
             // Roll for status effect from enemy attribute
             const isElite = bullet._enemyCategory === 'elite' || bullet._enemyCategory === 'boss';
@@ -298,8 +328,12 @@ class GameScene extends Phaser.Scene {
 
         const dmg = enemy.atk;
         let remaining = this.shieldSystem.applyDamage(dmg);
+        if (remaining < dmg) {
+            this.effects.shieldAbsorb(player.x, player.y);
+        }
         if (remaining > 0) {
             player.takeDamage(remaining);
+            this.effects.hitImpact(player.x, player.y, 0xff4444);
 
             // Roll for status effect from contact
             const isElite = enemy.enemyData?.category === 'elite' || enemy.enemyData?.category === 'boss';
@@ -483,6 +517,12 @@ class GameScene extends Phaser.Scene {
             this.cameras.main.shake(300, 0.01);
             AudioManager.playSFX('sfx_explosion');
 
+            // Boss break visual effect
+            const boss = this.enemyPool.activeBoss;
+            if (boss) {
+                this.effects.bossBreak(boss.x, boss.y);
+            }
+
             const breakText = this.add.text(
                 FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 80, 'BREAK!',
                 { fontSize: '36px', fontFamily: 'Arial', color: '#ffff00',
@@ -631,6 +671,7 @@ class GameScene extends Phaser.Scene {
         const charId = this.activePlayer.charId;
         if (this.skillSystem.useSkill(charId, skillSlot)) {
             AudioManager.playSFX('sfx_skill');
+            this.effects.skillActivation(this.activePlayer.x, this.activePlayer.y, this.activePlayer.attribute);
             const activeEnemies = this.enemyPool.getActiveEnemies();
 
             // Support skills (medic/tank heal/shield)
@@ -640,6 +681,7 @@ class GameScene extends Phaser.Scene {
                 const healBoost = 1 + (this.activePlayer.passiveData?.healBoost || 0);
                 this.activePlayer.heal(Math.floor(this.activePlayer.maxHp * 0.2 * healBoost));
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'HEAL', false);
+                this.effects.healEffect(this.activePlayer.x, this.activePlayer.y);
             } else if (charData.type === 'medic' && skillSlot === 'skill2') {
                 // Regen field: heal all 2% per second for 30 seconds (+ heal boost passive)
                 const healBoost = 1 + (this.activePlayer.passiveData?.healBoost || 0);
@@ -662,6 +704,7 @@ class GameScene extends Phaser.Scene {
                 const defBonus = Math.floor(this.activePlayer.def * 0.2);
                 this.activePlayer.def += defBonus;
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'DEF UP', false);
+                this.effects.buffPulse(this.activePlayer.x, this.activePlayer.y, 0x4488ff);
                 this.activePlayer.addStatusEffect('def_up', 5000, '▲', '#4488ff');
                 this.time.delayedCall(5000, () => { this.activePlayer.def -= defBonus; });
                 return;
@@ -669,6 +712,7 @@ class GameScene extends Phaser.Scene {
                 // Shield +300 + damage reduction 3s
                 this.shieldSystem.heal(300);
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'SHIELD', false);
+                this.effects.buffPulse(this.activePlayer.x, this.activePlayer.y, 0x44ccff);
                 this.activePlayer.addStatusEffect('shield_up', 3000, '◆', '#44ccff');
             } else if (charData.type === 'support' && skillSlot === 'skill2') {
                 // ATK +25% buff for 8 seconds
@@ -677,6 +721,7 @@ class GameScene extends Phaser.Scene {
                         const bonus = Math.floor(p.atk * 0.25);
                         p.atk += bonus;
                         this.showDamageNumber(p.x, p.y - 30, 'ATK UP', false);
+                        this.effects.buffPulse(p.x, p.y, 0xff8844);
                         p.addStatusEffect('atk_up', 8000, '▲', '#ff8844');
                         this.time.delayedCall(8000, () => { p.atk -= bonus; });
                     }
@@ -698,6 +743,7 @@ class GameScene extends Phaser.Scene {
             AudioManager.playSFX('sfx_ult');
             this.cameras.main.flash(300, 255, 200, 50);
             this.cameras.main.shake(200, 0.005);
+            this.effects.ultActivation(this.activePlayer.x, this.activePlayer.y, this.activePlayer.attribute);
 
             // Show ULT name
             const ultData = this.skillSystem.ultGauge[charId];
