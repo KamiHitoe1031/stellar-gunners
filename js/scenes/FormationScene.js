@@ -138,6 +138,8 @@ class FormationScene extends Phaser.Scene {
     createCharCard(x, y, char, index) {
         const color = ATTRIBUTE_COLORS[char.attribute] || 0xffffff;
         const isSelected = this.selectedParty.includes(char.id);
+        const charSave = this.save.characters[char.id] || { level: 1 };
+        const level = charSave.level || 1;
 
         const bg = this.add.rectangle(x + 100, y + 60, 210, 140, 0x1a1a33, 0.9)
             .setInteractive({ useHandCursor: true })
@@ -145,16 +147,14 @@ class FormationScene extends Phaser.Scene {
 
         const charId = char.charId || char.id.replace('_normal', '');
         const iconKey = `icon_${charId}`;
-        let icon;
         if (this.textures.exists(iconKey)) {
-            icon = this.add.image(x + 30, y + 40, iconKey)
-                .setDisplaySize(40, 40);
+            this.add.image(x + 30, y + 40, iconKey).setDisplaySize(40, 40);
         } else {
-            icon = this.add.rectangle(x + 30, y + 40, 40, 40, color);
+            this.add.rectangle(x + 30, y + 40, 40, 40, color);
         }
 
         const rarityStr = '★'.repeat(char.rarity);
-        this.add.text(x + 60, y + 15, rarityStr, {
+        this.add.text(x + 60, y + 15, `${rarityStr}  Lv.${level}`, {
             fontSize: '12px', fontFamily: 'Arial', color: '#ffcc00'
         });
 
@@ -166,17 +166,20 @@ class FormationScene extends Phaser.Scene {
             fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa'
         });
 
-        this.add.text(x + 20, y + 75, `HP:${char.hp} ATK:${char.atk} DEF:${char.def}`, {
+        const stats = SaveManager.getCharStats(char, level);
+        this.add.text(x + 20, y + 75, `HP:${stats.hp} ATK:${stats.atk} DEF:${stats.def}`, {
             fontSize: '10px', fontFamily: 'Arial', color: '#888888'
         });
         this.add.text(x + 20, y + 90, `SPD:${char.spd} CRIT:${char.critRate}%`, {
             fontSize: '10px', fontFamily: 'Arial', color: '#888888'
         });
-        this.add.text(x + 20, y + 105, `武器: ${char.weaponType}`, {
-            fontSize: '10px', fontFamily: 'Arial', color: '#888888'
+
+        const wpnName = EquipmentSystem.getEquippedWeaponName(char.id, this.save, this.cache.json.get('weapons'));
+        this.add.text(x + 20, y + 105, `武器: ${wpnName || char.weaponType}`, {
+            fontSize: '10px', fontFamily: 'Arial', color: wpnName ? '#88ccff' : '#888888'
         });
 
-        bg.on('pointerdown', () => {
+        bg.on('pointerdown', (pointer) => {
             const idx = this.selectedParty.indexOf(char.id);
             if (idx >= 0) {
                 this.selectedParty.splice(idx, 1);
@@ -185,6 +188,17 @@ class FormationScene extends Phaser.Scene {
             }
             this.updateFormationUI();
         });
+
+        // Equip weapon button
+        const equipBtn = this.add.text(x + 170, y + 105, '[装備]', {
+            fontSize: '10px', fontFamily: 'Arial', color: '#4488ff'
+        }).setInteractive({ useHandCursor: true });
+        equipBtn.on('pointerdown', (pointer) => {
+            pointer.event.stopPropagation();
+            this.showEquipPopup(char);
+        });
+        equipBtn.on('pointerover', () => equipBtn.setColor('#88ccff'));
+        equipBtn.on('pointerout', () => equipBtn.setColor('#4488ff'));
 
         this.characterCards.push({ bg, charId: char.id });
     }
@@ -202,9 +216,15 @@ class FormationScene extends Phaser.Scene {
             this.selectedParty = this.characters.slice(0, 3).map(c => c.id);
         }
 
-        const partyData = this.selectedParty.map(id =>
-            this.characters.find(c => c.id === id)
-        ).filter(Boolean);
+        const save = SaveManager.load();
+        const weaponsData = this.cache.json.get('weapons');
+        const modulesData = this.cache.json.get('modules');
+
+        const partyData = this.selectedParty.map(id => {
+            const charBase = this.characters.find(c => c.id === id);
+            if (!charBase) return null;
+            return EquipmentSystem.getCharBattleStats(charBase, save, weaponsData, modulesData);
+        }).filter(Boolean);
 
         const battleData = {
             stageId: this.selectedStage.id,
@@ -222,6 +242,107 @@ class FormationScene extends Phaser.Scene {
         } else {
             this.scene.start('GameScene', battleData);
         }
+    }
+
+    showEquipPopup(char) {
+        if (this.equipPopup) {
+            this.equipPopup.destroy();
+            this.equipPopup = null;
+        }
+
+        const weaponsData = this.cache.json.get('weapons');
+        const save = SaveManager.load();
+        const ownedWeapons = EquipmentSystem.getOwnedWeapons(save, weaponsData);
+        const compatibleWeapons = ownedWeapons.filter(w => w.def.weaponType === char.weaponType);
+
+        this.equipPopup = this.add.container(0, 0).setDepth(200);
+
+        // Dim background
+        const dim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7);
+        dim.setInteractive();
+        dim.on('pointerdown', () => {
+            this.equipPopup.destroy();
+            this.equipPopup = null;
+        });
+        this.equipPopup.add(dim);
+
+        // Panel
+        const panelW = 400;
+        const panelH = Math.min(300, 80 + compatibleWeapons.length * 45 + 45);
+        const panel = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, panelW, panelH, 0x1a1a33, 0.95)
+            .setStrokeStyle(2, 0x4488ff);
+        this.equipPopup.add(panel);
+
+        const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - panelH / 2 + 20, `${char.name} - 武器装備`, {
+            fontSize: '16px', fontFamily: 'Arial', color: '#ffffff'
+        }).setOrigin(0.5);
+        this.equipPopup.add(title);
+
+        // Unequip option
+        const currentEquip = save.equipment?.[char.id]?.weaponId;
+        if (currentEquip) {
+            const unequipY = GAME_HEIGHT / 2 - panelH / 2 + 50;
+            const unequipBg = this.add.rectangle(GAME_WIDTH / 2, unequipY, panelW - 40, 35, 0x332222)
+                .setInteractive({ useHandCursor: true })
+                .setStrokeStyle(1, 0x664444);
+            const unequipText = this.add.text(GAME_WIDTH / 2, unequipY, '装備解除', {
+                fontSize: '13px', fontFamily: 'Arial', color: '#ff8888'
+            }).setOrigin(0.5);
+            unequipBg.on('pointerdown', () => {
+                EquipmentSystem.unequipWeapon(char.id);
+                this.save = SaveManager.load();
+                this.equipPopup.destroy();
+                this.equipPopup = null;
+                this.showFormation();
+            });
+            this.equipPopup.add(unequipBg);
+            this.equipPopup.add(unequipText);
+        }
+
+        if (compatibleWeapons.length === 0) {
+            const noWpn = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, `対応武器(${char.weaponType})なし\nショップで購入できます`, {
+                fontSize: '13px', fontFamily: 'Arial', color: '#666666', align: 'center'
+            }).setOrigin(0.5);
+            this.equipPopup.add(noWpn);
+        }
+
+        const startY = GAME_HEIGHT / 2 - panelH / 2 + (currentEquip ? 90 : 55);
+        compatibleWeapons.forEach((wpn, i) => {
+            const y = startY + i * 45;
+            const isEquipped = currentEquip === wpn.instanceId;
+            const bgColor = isEquipped ? 0x223344 : 0x1a1a2e;
+
+            const itemBg = this.add.rectangle(GAME_WIDTH / 2, y, panelW - 40, 38, bgColor)
+                .setInteractive({ useHandCursor: true })
+                .setStrokeStyle(1, isEquipped ? 0x4488ff : 0x333355);
+
+            const stars = '★'.repeat(wpn.def.rarity);
+            const itemText = this.add.text(GAME_WIDTH / 2 - panelW / 2 + 40, y - 8, `${stars} ${wpn.def.name}`, {
+                fontSize: '13px', fontFamily: 'Arial', color: '#ffffff'
+            });
+            const itemSub = this.add.text(GAME_WIDTH / 2 - panelW / 2 + 40, y + 7, `Lv.${wpn.level || 1} ATK+${wpn.def.mainAtk}`, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#aaaaaa'
+            });
+
+            if (isEquipped) {
+                const eqLabel = this.add.text(GAME_WIDTH / 2 + panelW / 2 - 40, y, '装備中', {
+                    fontSize: '11px', fontFamily: 'Arial', color: '#4488ff'
+                }).setOrigin(1, 0.5);
+                this.equipPopup.add(eqLabel);
+            }
+
+            itemBg.on('pointerdown', () => {
+                EquipmentSystem.equipWeapon(char.id, wpn.instanceId);
+                this.save = SaveManager.load();
+                this.equipPopup.destroy();
+                this.equipPopup = null;
+                this.showFormation();
+            });
+
+            this.equipPopup.add(itemBg);
+            this.equipPopup.add(itemText);
+            this.equipPopup.add(itemSub);
+        });
     }
 
     createBackButton(action) {

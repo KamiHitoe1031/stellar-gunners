@@ -5,143 +5,169 @@ class EnhanceScene extends Phaser.Scene {
 
     init() {
         this.selectedCharId = null;
+        this.currentTab = 'character';
     }
 
     create() {
         this.characters = this.cache.json.get('characters');
+        this.weaponsData = this.cache.json.get('weapons');
         this.progressionData = this.cache.json.get('progression');
         this.save = SaveManager.load();
 
         this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0e0e22);
-        this.showCharacterList();
+        this.showMain();
     }
 
-    showCharacterList() {
+    showMain() {
         this.clearUI();
         this.save = SaveManager.load();
 
         this.createBackButton(() => this.scene.start('MenuScene'));
 
-        this.add.text(GAME_WIDTH / 2, 30, 'キャラクター強化', {
+        this.add.text(GAME_WIDTH / 2, 28, '強化', {
             fontSize: '24px', fontFamily: 'Arial', color: '#ffffff',
             stroke: '#000000', strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.add.text(GAME_WIDTH / 2, 58, `所持クレジット: ${this.save.player.credits}`, {
-            fontSize: '14px', fontFamily: 'Arial', color: '#ffcc44'
-        }).setOrigin(0.5);
+        // Currency
+        this.add.text(GAME_WIDTH - 20, 15, `クレジット: ${this.save.player.credits}`, {
+            fontSize: '13px', fontFamily: 'Arial', color: '#ffcc44'
+        }).setOrigin(1, 0);
 
+        // Tabs
+        const tabs = [
+            { key: 'character', label: 'キャラ強化' },
+            { key: 'weapon', label: '武器強化' }
+        ];
+        tabs.forEach((tab, i) => {
+            const tx = 130 + i * 150;
+            const isActive = this.currentTab === tab.key;
+            const tabBg = this.add.rectangle(tx, 62, 130, 28, isActive ? 0x2244aa : 0x1a1a33)
+                .setInteractive({ useHandCursor: true })
+                .setStrokeStyle(1, isActive ? 0x4488ff : 0x333355);
+            this.add.text(tx, 62, tab.label, {
+                fontSize: '13px', fontFamily: 'Arial', color: isActive ? '#ffffff' : '#888888'
+            }).setOrigin(0.5);
+            tabBg.on('pointerdown', () => {
+                this.currentTab = tab.key;
+                this.showMain();
+            });
+        });
+
+        if (this.currentTab === 'character') {
+            this.showCharacterList();
+        } else {
+            this.showWeaponList();
+        }
+    }
+
+    // ===== CHARACTER TAB =====
+    showCharacterList() {
         this.characters.forEach((char, i) => {
             const x = 50 + (i % 3) * 245;
-            const y = 90 + Math.floor(i / 3) * 200;
+            const y = 90 + Math.floor(i / 3) * 190;
             this.createCharSelectCard(x, y, char);
         });
     }
 
     createCharSelectCard(x, y, char) {
         const color = ATTRIBUTE_COLORS[char.attribute] || 0xffffff;
-        const charSave = this.save.characters[char.id] || { level: 1 };
+        const charSave = this.save.characters[char.id] || { level: 1, breakthroughCount: 0 };
         const level = charSave.level || 1;
+        const bt = charSave.breakthroughCount || 0;
         const stats = SaveManager.getCharStats(char, level);
 
-        const bg = this.add.rectangle(x + 105, y + 75, 215, 155, 0x1a1a33, 0.9)
+        const bg = this.add.rectangle(x + 105, y + 72, 215, 145, 0x1a1a33, 0.9)
             .setInteractive({ useHandCursor: true })
             .setStrokeStyle(1, 0x333355);
 
-        // Icon
         const charId = char.charId || char.id.replace('_normal', '');
         const iconKey = `icon_${charId}`;
         if (this.textures.exists(iconKey)) {
-            this.add.image(x + 30, y + 40, iconKey).setDisplaySize(44, 44);
+            this.add.image(x + 30, y + 38, iconKey).setDisplaySize(44, 44);
         } else {
-            this.add.rectangle(x + 30, y + 40, 44, 44, color);
+            this.add.rectangle(x + 30, y + 38, 44, 44, color);
         }
 
-        // Name + level
-        this.add.text(x + 62, y + 15, `${char.name}`, {
+        this.add.text(x + 62, y + 12, char.name, {
             fontSize: '14px', fontFamily: 'Arial', color: '#ffffff'
         });
-        this.add.text(x + 62, y + 34, `Lv.${level}`, {
+        this.add.text(x + 62, y + 30, `Lv.${level}`, {
             fontSize: '18px', fontFamily: 'Arial', color: '#88ccff'
         });
+        if (bt > 0) {
+            this.add.text(x + 130, y + 32, `突破+${bt}`, {
+                fontSize: '12px', fontFamily: 'Arial', color: '#ff8844'
+            });
+        }
 
-        // Attribute + type
-        this.add.text(x + 62, y + 56, `${ATTRIBUTE_NAMES[char.attribute]} | ${TYPE_NAMES[char.type]}`, {
+        this.add.text(x + 62, y + 52, `${ATTRIBUTE_NAMES[char.attribute]} | ${TYPE_NAMES[char.type]}`, {
             fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa'
         });
 
-        // Stats
-        this.add.text(x + 15, y + 80, `HP: ${stats.hp}  ATK: ${stats.atk}`, {
+        this.add.text(x + 15, y + 74, `HP:${stats.hp} ATK:${stats.atk} DEF:${stats.def}`, {
             fontSize: '11px', fontFamily: 'Arial', color: '#888888'
         });
-        this.add.text(x + 15, y + 96, `DEF: ${stats.def}  Shield: ${stats.shield}`, {
+        this.add.text(x + 15, y + 90, `Shield:${stats.shield} CRIT:${char.critRate}%`, {
             fontSize: '11px', fontFamily: 'Arial', color: '#888888'
         });
 
-        // Next level cost
         const nextData = this.progressionData.find(p => p.level === level + 1);
         if (nextData) {
-            const canAfford = this.save.player.credits >= nextData.xpRequired;
-            this.add.text(x + 15, y + 118, `次Lv: ${nextData.xpRequired} Credits`, {
-                fontSize: '10px', fontFamily: 'Arial', color: canAfford ? '#88ff88' : '#ff6666'
+            this.add.text(x + 15, y + 110, `次Lv: ${nextData.xpRequired} Cr`, {
+                fontSize: '10px', fontFamily: 'Arial',
+                color: this.save.player.credits >= nextData.xpRequired ? '#88ff88' : '#ff6666'
             });
         } else {
-            this.add.text(x + 15, y + 118, 'MAX LEVEL', {
+            this.add.text(x + 15, y + 110, 'MAX LEVEL', {
                 fontSize: '10px', fontFamily: 'Arial', color: '#ffcc00'
             });
         }
 
         bg.on('pointerover', () => bg.setStrokeStyle(2, 0x6688ff));
         bg.on('pointerout', () => bg.setStrokeStyle(1, 0x333355));
-        bg.on('pointerdown', () => {
-            this.selectedCharId = char.id;
-            this.showEnhanceDetail(char);
-        });
+        bg.on('pointerdown', () => this.showCharDetail(char));
     }
 
-    showEnhanceDetail(char) {
+    showCharDetail(char) {
         this.clearUI();
         this.save = SaveManager.load();
-        const charSave = this.save.characters[char.id] || { level: 1 };
+        const charSave = this.save.characters[char.id] || { level: 1, breakthroughCount: 0 };
         const level = charSave.level || 1;
+        const bt = charSave.breakthroughCount || 0;
         const currentStats = SaveManager.getCharStats(char, level);
         const nextStats = SaveManager.getCharStats(char, level + 1);
         const nextData = this.progressionData.find(p => p.level === level + 1);
 
-        this.createBackButton(() => this.showCharacterList());
+        this.createBackButton(() => this.showMain());
 
-        // Character header
+        // Header
         const color = ATTRIBUTE_COLORS[char.attribute] || 0xffffff;
         const charId = char.charId || char.id.replace('_normal', '');
         const iconKey = `icon_${charId}`;
         if (this.textures.exists(iconKey)) {
-            this.add.image(80, 60, iconKey).setDisplaySize(64, 64);
+            this.add.image(75, 55, iconKey).setDisplaySize(56, 56);
         } else {
-            this.add.rectangle(80, 60, 64, 64, color);
+            this.add.rectangle(75, 55, 56, 56, color);
         }
 
-        this.add.text(130, 30, char.name, {
-            fontSize: '22px', fontFamily: 'Arial', color: '#ffffff'
+        this.add.text(120, 28, char.name, {
+            fontSize: '20px', fontFamily: 'Arial', color: '#ffffff'
         });
         const rarityStr = '★'.repeat(char.rarity);
-        this.add.text(130, 56, `${rarityStr}  ${ATTRIBUTE_NAMES[char.attribute]} | ${TYPE_NAMES[char.type]}`, {
-            fontSize: '13px', fontFamily: 'Arial', color: '#ffcc00'
+        this.add.text(120, 52, `${rarityStr}  ${ATTRIBUTE_NAMES[char.attribute]} | ${TYPE_NAMES[char.type]}`, {
+            fontSize: '12px', fontFamily: 'Arial', color: '#ffcc00'
         });
-        this.add.text(130, 76, `Lv. ${level}`, {
-            fontSize: '20px', fontFamily: 'Arial', color: '#88ccff'
+        this.add.text(120, 70, `Lv.${level}${bt > 0 ? `  突破+${bt}` : ''}`, {
+            fontSize: '16px', fontFamily: 'Arial', color: '#88ccff'
         });
 
-        // Credits display
-        this.add.text(GAME_WIDTH - 20, 30, `クレジット: ${this.save.player.credits}`, {
-            fontSize: '14px', fontFamily: 'Arial', color: '#ffcc44'
+        this.add.text(GAME_WIDTH - 20, 28, `クレジット: ${this.save.player.credits}`, {
+            fontSize: '13px', fontFamily: 'Arial', color: '#ffcc44'
         }).setOrigin(1, 0);
 
-        // Stats panel
-        this.add.rectangle(GAME_WIDTH / 2, 190, 700, 2, 0x333355);
-        this.add.text(GAME_WIDTH / 2, 210, 'ステータス', {
-            fontSize: '16px', fontFamily: 'Arial', color: '#cccccc'
-        }).setOrigin(0.5);
-
+        // Stats
+        this.add.rectangle(GAME_WIDTH / 2, 100, 700, 2, 0x333355);
         const statNames = [
             { key: 'hp', label: 'HP', growth: char.growthHp },
             { key: 'atk', label: 'ATK', growth: char.growthAtk },
@@ -150,98 +176,185 @@ class EnhanceScene extends Phaser.Scene {
         ];
 
         statNames.forEach((stat, i) => {
-            const y = 240 + i * 36;
-            const leftX = 120;
-
-            this.add.text(leftX, y, stat.label, {
-                fontSize: '15px', fontFamily: 'Arial', color: '#aaaaaa'
+            const y = 115 + i * 28;
+            this.add.text(80, y, stat.label, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#aaaaaa'
             });
-
-            this.add.text(leftX + 100, y, `${currentStats[stat.key]}`, {
-                fontSize: '15px', fontFamily: 'Arial', color: '#ffffff'
+            this.add.text(160, y, `${currentStats[stat.key]}`, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ffffff'
             });
-
             if (nextData) {
-                this.add.text(leftX + 180, y, '→', {
-                    fontSize: '15px', fontFamily: 'Arial', color: '#666666'
+                this.add.text(230, y, `→ ${nextStats[stat.key]}`, {
+                    fontSize: '14px', fontFamily: 'Arial', color: '#88ff88'
                 });
-                this.add.text(leftX + 210, y, `${nextStats[stat.key]}`, {
-                    fontSize: '15px', fontFamily: 'Arial', color: '#88ff88'
-                });
-                this.add.text(leftX + 280, y, `(+${stat.growth})`, {
-                    fontSize: '12px', fontFamily: 'Arial', color: '#448844'
+                this.add.text(320, y, `(+${stat.growth})`, {
+                    fontSize: '11px', fontFamily: 'Arial', color: '#448844'
                 });
             }
         });
 
-        // Other stats (non-growth)
-        const y2 = 240 + statNames.length * 36 + 10;
-        this.add.text(120, y2, `SPD: ${char.spd}  CRIT: ${char.critRate}%  CRIT DMG: ${char.critDmg}%`, {
-            fontSize: '12px', fontFamily: 'Arial', color: '#777777'
+        this.add.text(80, 230, `SPD: ${char.spd}  CRIT: ${char.critRate}%  CRIT DMG: ${char.critDmg}%`, {
+            fontSize: '11px', fontFamily: 'Arial', color: '#777777'
         });
 
-        // Skills info
-        const skillY = y2 + 40;
-        this.add.rectangle(GAME_WIDTH / 2, skillY - 5, 700, 2, 0x333355);
-        this.add.text(GAME_WIDTH / 2, skillY + 10, 'スキル', {
-            fontSize: '16px', fontFamily: 'Arial', color: '#cccccc'
-        }).setOrigin(0.5);
-
-        this.add.text(80, skillY + 35, `[Q] ${char.skill1Name}`, {
-            fontSize: '13px', fontFamily: 'Arial', color: '#88aaff'
+        // Skills
+        this.add.rectangle(GAME_WIDTH / 2, 255, 700, 2, 0x333355);
+        this.add.text(80, 268, `[Q] ${char.skill1Name} - ${char.skill1Desc}`, {
+            fontSize: '11px', fontFamily: 'Arial', color: '#88aaff',
+            wordWrap: { width: 640 }
         });
-        this.add.text(100, skillY + 53, `${char.skill1Desc}  (CD: ${char.skill1CD}s)`, {
-            fontSize: '11px', fontFamily: 'Arial', color: '#888888'
+        this.add.text(80, 293, `[E] ${char.skill2Name} - ${char.skill2Desc}`, {
+            fontSize: '11px', fontFamily: 'Arial', color: '#88aaff',
+            wordWrap: { width: 640 }
         });
-
-        this.add.text(80, skillY + 78, `[E] ${char.skill2Name}`, {
-            fontSize: '13px', fontFamily: 'Arial', color: '#88aaff'
-        });
-        this.add.text(100, skillY + 96, `${char.skill2Desc}  (CD: ${char.skill2CD}s)`, {
-            fontSize: '11px', fontFamily: 'Arial', color: '#888888'
+        this.add.text(80, 318, `[P] ${char.passiveName} - ${char.passiveDesc}`, {
+            fontSize: '11px', fontFamily: 'Arial', color: '#aaaa44',
+            wordWrap: { width: 640 }
         });
 
-        this.add.text(80, skillY + 121, `[P] ${char.passiveName}`, {
-            fontSize: '13px', fontFamily: 'Arial', color: '#aaaa44'
-        });
-        this.add.text(100, skillY + 139, char.passiveDesc, {
-            fontSize: '11px', fontFamily: 'Arial', color: '#888888'
-        });
+        // Action buttons
+        this.add.rectangle(GAME_WIDTH / 2, 365, 700, 2, 0x333355);
 
-        // Level up button
+        // Level Up button
         if (nextData) {
             const cost = nextData.xpRequired;
             const canAfford = this.save.player.credits >= cost;
-            const btnColor = canAfford ? 0x2255aa : 0x444444;
-
-            const lvUpBtn = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 55, 280, 50, btnColor)
+            const lvBtn = this.add.rectangle(GAME_WIDTH / 2 - 140, 420, 240, 50, canAfford ? 0x2255aa : 0x333333)
                 .setInteractive({ useHandCursor: canAfford })
-                .setStrokeStyle(2, canAfford ? 0x4488ff : 0x555555);
-
-            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 65, 'レベルアップ', {
-                fontSize: '20px', fontFamily: 'Arial', color: canAfford ? '#ffffff' : '#888888'
+                .setStrokeStyle(2, canAfford ? 0x4488ff : 0x444444);
+            this.add.text(GAME_WIDTH / 2 - 140, 410, 'レベルアップ', {
+                fontSize: '18px', fontFamily: 'Arial', color: canAfford ? '#ffffff' : '#888888'
             }).setOrigin(0.5);
-
-            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 42, `${cost} Credits`, {
-                fontSize: '13px', fontFamily: 'Arial', color: canAfford ? '#ffcc44' : '#666666'
+            this.add.text(GAME_WIDTH / 2 - 140, 432, `${cost} Credits`, {
+                fontSize: '12px', fontFamily: 'Arial', color: canAfford ? '#ffcc44' : '#666666'
             }).setOrigin(0.5);
 
             if (canAfford) {
-                lvUpBtn.on('pointerover', () => lvUpBtn.setFillStyle(0x3366cc));
-                lvUpBtn.on('pointerout', () => lvUpBtn.setFillStyle(0x2255aa));
-                lvUpBtn.on('pointerdown', () => {
+                lvBtn.on('pointerover', () => lvBtn.setFillStyle(0x3366cc));
+                lvBtn.on('pointerout', () => lvBtn.setFillStyle(0x2255aa));
+                lvBtn.on('pointerdown', () => {
                     const result = SaveManager.levelUpCharacter(char.id, this.progressionData);
                     if (result.success) {
                         this.showLevelUpEffect(result.newLevel);
-                        this.time.delayedCall(600, () => this.showEnhanceDetail(char));
+                        this.time.delayedCall(600, () => this.showCharDetail(char));
                     }
                 });
             }
         } else {
-            this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 55, '最大レベル到達!', {
-                fontSize: '18px', fontFamily: 'Arial', color: '#ffcc00'
+            this.add.text(GAME_WIDTH / 2 - 140, 420, 'MAX LEVEL', {
+                fontSize: '16px', fontFamily: 'Arial', color: '#ffcc00'
             }).setOrigin(0.5);
         }
+
+        // Breakthrough button
+        const btCost = (bt + 1) * 500;
+        const maxBt = 6;
+        const canBt = bt < maxBt && this.save.player.credits >= btCost;
+
+        const btBtn = this.add.rectangle(GAME_WIDTH / 2 + 140, 420, 240, 50, canBt ? 0x553322 : 0x333333)
+            .setInteractive({ useHandCursor: canBt })
+            .setStrokeStyle(2, canBt ? 0xff8844 : 0x444444);
+
+        if (bt < maxBt) {
+            this.add.text(GAME_WIDTH / 2 + 140, 410, `限界突破 (${bt}/${maxBt})`, {
+                fontSize: '16px', fontFamily: 'Arial', color: canBt ? '#ffffff' : '#888888'
+            }).setOrigin(0.5);
+            this.add.text(GAME_WIDTH / 2 + 140, 432, `${btCost} Credits  全ステ+5%`, {
+                fontSize: '11px', fontFamily: 'Arial', color: canBt ? '#ff8844' : '#666666'
+            }).setOrigin(0.5);
+
+            if (canBt) {
+                btBtn.on('pointerover', () => btBtn.setFillStyle(0x664433));
+                btBtn.on('pointerout', () => btBtn.setFillStyle(0x553322));
+                btBtn.on('pointerdown', () => {
+                    const save = SaveManager.load();
+                    if (save.player.credits < btCost) return;
+                    save.player.credits -= btCost;
+                    if (!save.characters[char.id]) {
+                        save.characters[char.id] = { level: 1, exp: 0, breakthroughCount: 0, awakening: 0 };
+                    }
+                    save.characters[char.id].breakthroughCount = (save.characters[char.id].breakthroughCount || 0) + 1;
+                    SaveManager.save(save);
+                    this.showBreakthroughEffect(save.characters[char.id].breakthroughCount);
+                    this.time.delayedCall(800, () => this.showCharDetail(char));
+                });
+            }
+        } else {
+            this.add.text(GAME_WIDTH / 2 + 140, 420, '限界突破 MAX', {
+                fontSize: '16px', fontFamily: 'Arial', color: '#ff8844'
+            }).setOrigin(0.5);
+        }
+    }
+
+    // ===== WEAPON TAB =====
+    showWeaponList() {
+        const ownedWeapons = EquipmentSystem.getOwnedWeapons(this.save, this.weaponsData);
+
+        if (ownedWeapons.length === 0) {
+            this.add.text(GAME_WIDTH / 2, 200, '武器を所持していません\nショップで購入できます', {
+                fontSize: '16px', fontFamily: 'Arial', color: '#666666',
+                align: 'center'
+            }).setOrigin(0.5);
+            return;
+        }
+
+        ownedWeapons.forEach((wpn, i) => {
+            const y = 95 + i * 55;
+            if (y > GAME_HEIGHT - 50) return;
+
+            const rarityColors = { 1: 0x666666, 2: 0x2255aa, 3: 0x8844cc, 4: 0xcc8800 };
+            const borderColor = rarityColors[wpn.def.rarity] || 0x333355;
+
+            const bg = this.add.rectangle(GAME_WIDTH / 2, y + 20, 700, 46, 0x1a1a33, 0.9)
+                .setInteractive({ useHandCursor: true })
+                .setStrokeStyle(1, borderColor);
+
+            this.add.rectangle(55, y + 20, 5, 38, borderColor);
+
+            const stars = '★'.repeat(wpn.def.rarity);
+            this.add.text(70, y + 8, `${stars} ${wpn.def.name}`, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ffffff'
+            });
+            this.add.text(70, y + 26, `Lv.${wpn.level || 1}  ATK+${wpn.def.mainAtk}  ${wpn.def.weaponType}`, {
+                fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa'
+            });
+
+            // Level up button
+            const wpnLvCost = (wpn.level || 1) * 100;
+            const maxLv = wpn.def.maxLevel || 20;
+            const canLvUp = (wpn.level || 1) < maxLv && this.save.player.credits >= wpnLvCost;
+
+            const lvBtn = this.add.rectangle(GAME_WIDTH - 100, y + 20, 110, 34, canLvUp ? 0x225533 : 0x222222)
+                .setInteractive({ useHandCursor: canLvUp })
+                .setStrokeStyle(1, canLvUp ? 0x44aa66 : 0x333333);
+
+            if ((wpn.level || 1) < maxLv) {
+                this.add.text(GAME_WIDTH - 100, y + 12, '強化', {
+                    fontSize: '12px', fontFamily: 'Arial', color: canLvUp ? '#ffffff' : '#666666'
+                }).setOrigin(0.5);
+                this.add.text(GAME_WIDTH - 100, y + 27, `${wpnLvCost} Cr`, {
+                    fontSize: '10px', fontFamily: 'Arial', color: canLvUp ? '#ffcc44' : '#555555'
+                }).setOrigin(0.5);
+
+                if (canLvUp) {
+                    lvBtn.on('pointerover', () => lvBtn.setFillStyle(0x336644));
+                    lvBtn.on('pointerout', () => lvBtn.setFillStyle(0x225533));
+                    lvBtn.on('pointerdown', () => {
+                        const save = SaveManager.load();
+                        if (save.player.credits < wpnLvCost) return;
+                        save.player.credits -= wpnLvCost;
+                        save.weapons[wpn.instanceId].level = (save.weapons[wpn.instanceId].level || 1) + 1;
+                        SaveManager.save(save);
+                        this.showLevelUpEffect(save.weapons[wpn.instanceId].level);
+                        this.time.delayedCall(600, () => this.showMain());
+                    });
+                }
+            } else {
+                this.add.text(GAME_WIDTH - 100, y + 20, 'MAX', {
+                    fontSize: '12px', fontFamily: 'Arial', color: '#ffcc00'
+                }).setOrigin(0.5);
+            }
+        });
     }
 
     showLevelUpEffect(newLevel) {
@@ -251,11 +364,21 @@ class EnhanceScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(200);
 
         this.tweens.add({
-            targets: text,
-            y: text.y - 60,
-            alpha: 0,
-            duration: 800,
-            ease: 'Power2',
+            targets: text, y: text.y - 60, alpha: 0,
+            duration: 800, ease: 'Power2',
+            onComplete: () => text.destroy()
+        });
+    }
+
+    showBreakthroughEffect(count) {
+        const text = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, `限界突破! +${count}`, {
+            fontSize: '28px', fontFamily: 'Arial', color: '#ff8844',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(200);
+
+        this.tweens.add({
+            targets: text, y: text.y - 60, alpha: 0,
+            duration: 1000, ease: 'Power2',
             onComplete: () => text.destroy()
         });
     }

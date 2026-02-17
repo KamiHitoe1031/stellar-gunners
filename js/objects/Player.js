@@ -10,6 +10,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.charType = charData.type;
         this.weaponType = charData.weaponType;
 
+        // Stats are pre-calculated by EquipmentSystem (level + equipment + type bonus)
         this.maxHp = charData.hp;
         this.currentHp = charData.hp;
         this.atk = charData.atk;
@@ -18,13 +19,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         this.spd = charData.spd;
         this.critRate = charData.critRate;
         this.critDmg = charData.critDmg;
-        this.weaponAtk = 0;
-
-        if (charData.type === 'dps') this.atk = Math.floor(this.atk * 1.15);
-        if (charData.type === 'tank') {
-            this.def = Math.floor(this.def * 1.20);
-            this.shield = Math.floor(this.shield * 1.20);
-        }
+        this.weaponAtk = charData.weaponAtk || 0;
 
         this.weaponConfig = WEAPON_CONFIGS[this.weaponType] || WEAPON_CONFIGS.pistol;
         this.currentMagazine = this.weaponConfig.magazineSize;
@@ -82,22 +77,32 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         return this.maxHp > 0 ? this.currentHp / this.maxHp : 0;
     }
 
-    updateMovement(cursors, wasd, delta) {
+    updateMovement(cursors, wasd, delta, joyInput) {
         if (!this.isActive || this.isDead) {
             this.setVelocity(0, 0);
             return;
         }
 
         let vx = 0, vy = 0;
+
+        // Keyboard input
         if (cursors.left.isDown || wasd.A.isDown) vx = -1;
         if (cursors.right.isDown || wasd.D.isDown) vx = 1;
         if (cursors.up.isDown || wasd.W.isDown) vy = -1;
         if (cursors.down.isDown || wasd.S.isDown) vy = 1;
 
+        // Virtual joystick input (touch)
+        if (joyInput && joyInput.active && (Math.abs(joyInput.dx) > 0.1 || Math.abs(joyInput.dy) > 0.1)) {
+            vx = joyInput.dx;
+            vy = joyInput.dy;
+        }
+
         if (vx !== 0 && vy !== 0) {
-            const norm = 1 / Math.SQRT2;
-            vx *= norm;
-            vy *= norm;
+            const len = Math.sqrt(vx * vx + vy * vy);
+            if (len > 1) {
+                vx /= len;
+                vy /= len;
+            }
         }
 
         this.setVelocity(vx * this.spd, vy * this.spd);

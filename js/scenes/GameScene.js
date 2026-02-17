@@ -439,7 +439,10 @@ class GameScene extends Phaser.Scene {
 
         // Player movement and auto-fire
         if (this.activePlayer && !this.activePlayer.isDead) {
-            this.activePlayer.updateMovement(this.cursors, this.wasd, delta);
+            // Get joystick input from UIScene if available
+            const uiScene = this.scene.get('UIScene');
+            const joyInput = uiScene?.getJoystickInput?.() || { active: false, dx: 0, dy: 0 };
+            this.activePlayer.updateMovement(this.cursors, this.wasd, delta, joyInput);
 
             const activeEnemies = this.enemyPool.getActiveEnemies();
             this.activePlayer.updateAutoFire(activeEnemies, this.playerBullets, delta);

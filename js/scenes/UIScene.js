@@ -50,9 +50,16 @@ class UIScene extends Phaser.Scene {
             if (gameScene) gameScene.tryUseSkill('skill2');
         };
 
+        // Virtual joystick (touch)
+        this.joystickData = { active: false, dx: 0, dy: 0 };
+        this.createVirtualJoystick();
+
+        // Character switch buttons (touch)
+        this.createCharSwitchButtons();
+
         // Controls hint
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 15, 'WASD: 移動  Q/E: スキル  1/2/3: キャラ切替', {
-            fontSize: '10px', fontFamily: 'Arial', color: '#666666',
+            fontSize: '10px', fontFamily: 'Arial', color: '#555555',
             stroke: '#000000', strokeThickness: 1
         }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
 
@@ -126,6 +133,91 @@ class UIScene extends Phaser.Scene {
                 this.bossHUD.updateHP(boss.currentHp, boss.maxHp);
             }
         }
+    }
+
+    createVirtualJoystick() {
+        const baseX = 90;
+        const baseY = GAME_HEIGHT - 100;
+        const radius = 50;
+
+        // Outer ring
+        this.joyBase = this.add.circle(baseX, baseY, radius, 0xffffff, 0.1)
+            .setStrokeStyle(2, 0xffffff, 0.3)
+            .setScrollFactor(0).setDepth(190);
+
+        // Inner knob
+        this.joyKnob = this.add.circle(baseX, baseY, 20, 0xffffff, 0.3)
+            .setScrollFactor(0).setDepth(191);
+
+        // Touch zone (larger invisible area)
+        this.joyZone = this.add.rectangle(baseX, baseY, radius * 3, radius * 3, 0x000000, 0)
+            .setInteractive().setScrollFactor(0).setDepth(189);
+
+        this.joyZone.on('pointerdown', (pointer) => {
+            this.joystickData.active = true;
+            this.updateJoystick(pointer);
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (!this.joystickData.active) return;
+            this.updateJoystick(pointer);
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            this.joystickData.active = false;
+            this.joystickData.dx = 0;
+            this.joystickData.dy = 0;
+            this.joyKnob.setPosition(baseX, baseY);
+        });
+    }
+
+    updateJoystick(pointer) {
+        const baseX = 90;
+        const baseY = GAME_HEIGHT - 100;
+        const radius = 50;
+
+        let dx = pointer.x - baseX;
+        let dy = pointer.y - baseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > radius) {
+            dx = (dx / dist) * radius;
+            dy = (dy / dist) * radius;
+        }
+
+        this.joyKnob.setPosition(baseX + dx, baseY + dy);
+        this.joystickData.dx = dx / radius;
+        this.joystickData.dy = dy / radius;
+    }
+
+    createCharSwitchButtons() {
+        const startX = 200;
+        const y = GAME_HEIGHT - 55;
+
+        for (let i = 0; i < Math.min(this.partyData.length, 3); i++) {
+            const x = startX + i * 45;
+            const char = this.partyData[i];
+            const color = ATTRIBUTE_COLORS[char.attribute] || 0xffffff;
+
+            const btn = this.add.circle(x, y, 16, color, 0.4)
+                .setStrokeStyle(2, color, 0.8)
+                .setInteractive({ useHandCursor: true })
+                .setScrollFactor(0).setDepth(200);
+
+            this.add.text(x, y, `${i + 1}`, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ffffff',
+                stroke: '#000000', strokeThickness: 2
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(201);
+
+            btn.on('pointerdown', () => {
+                const gameScene = this.scene.get('GameScene');
+                if (gameScene) gameScene.switchCharacter(i);
+            });
+        }
+    }
+
+    getJoystickInput() {
+        return this.joystickData;
     }
 
     cleanup() {
