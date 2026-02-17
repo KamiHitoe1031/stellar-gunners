@@ -29,13 +29,14 @@ class MenuScene extends Phaser.Scene {
         // Menu buttons
         const buttons = [
             { label: '出撃', desc: 'ステージ選択・バトル', action: () => this.scene.start('FormationScene') },
-            { label: '編成', desc: 'パーティ編成', action: () => {} },
-            { label: '強化', desc: 'キャラ・武器強化', action: () => {} },
-            { label: 'ショップ', desc: '素材・武器購入', action: () => {} },
+            { label: '変化の壷', desc: 'アイテムを別のアイテムに変化', action: () => this.scene.start('TransformPotScene') },
+            { label: '編成', desc: 'パーティ編成 (準備中)', action: () => {} },
+            { label: '強化', desc: 'キャラ・武器強化 (準備中)', action: () => {} },
+            { label: 'ショップ', desc: '素材・武器購入 (準備中)', action: () => {} },
         ];
 
         buttons.forEach((btn, i) => {
-            const y = 180 + i * 80;
+            const y = 160 + i * 68;
             this.createMenuButton(cx, y, btn.label, btn.desc, btn.action);
         });
 

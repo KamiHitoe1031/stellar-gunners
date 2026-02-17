@@ -221,10 +221,17 @@ class GameScene extends Phaser.Scene {
     }
 
     showDamageNumber(x, y, damage, isCrit) {
-        const color = isCrit ? '#ffff00' : '#ffffff';
-        const size = isCrit ? '18px' : '14px';
-        const prefix = isCrit ? 'CRIT ' : '';
-        const text = this.add.text(x, y, `${prefix}${damage}`, {
+        let color, size, label;
+        if (typeof damage === 'string') {
+            color = '#88ffaa';
+            size = '14px';
+            label = damage;
+        } else {
+            color = isCrit ? '#ffff00' : '#ffffff';
+            size = isCrit ? '18px' : '14px';
+            label = isCrit ? `CRIT ${damage}` : `${damage}`;
+        }
+        const text = this.add.text(x, y, label, {
             fontSize: size, fontFamily: 'Arial', color: color,
             stroke: '#000000', strokeThickness: 2
         }).setOrigin(0.5).setDepth(80);
@@ -338,8 +345,17 @@ class GameScene extends Phaser.Scene {
             SaveManager.markStageCleared(this.stageId, stars);
 
             // Apply rewards
+            const allWeapons = this.cache.json.get('weapons');
             drops.forEach(d => {
                 if (d.type === 'credit') SaveManager.addCredits(d.amount);
+                if (d.type === 'weapon' && allWeapons) {
+                    const candidates = allWeapons.filter(w => w.rarity <= (d.rarity || 1));
+                    if (candidates.length > 0) {
+                        const wpn = candidates[Math.floor(Math.random() * candidates.length)];
+                        TransformPotSystem.addToInventory('weapon', wpn);
+                        d.weaponName = wpn.name;
+                    }
+                }
             });
             firstClearRewards.forEach(r => {
                 if (r.type === 'gems') SaveManager.addGems(r.amount);
@@ -455,19 +471,40 @@ class GameScene extends Phaser.Scene {
             if (charData.type === 'medic' && skillSlot === 'skill1') {
                 // Heal active character 20%
                 this.activePlayer.heal(Math.floor(this.activePlayer.maxHp * 0.2));
+                this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'HEAL', false);
             } else if (charData.type === 'medic' && skillSlot === 'skill2') {
-                // Heal all 10%
-                this.players.forEach(p => {
-                    if (!p.isDead) p.heal(Math.floor(p.maxHp * 0.1));
+                // Regen field: heal all 2% per second for 30 seconds
+                let ticks = 0;
+                const regenEvent = this.time.addEvent({
+                    delay: 1000, repeat: 29, callback: () => {
+                        this.players.forEach(p => {
+                            if (!p.isDead) p.heal(Math.floor(p.maxHp * 0.02));
+                        });
+                    }
                 });
+                this.players.forEach(p => {
+                    if (!p.isDead) this.showDamageNumber(p.x, p.y - 30, 'REGEN', false);
+                });
+            } else if (charData.type === 'tank' && skillSlot === 'skill1') {
+                // Fortress Shot: ATK×150% + DEF+20% for 5s
+                this.activePlayer.useSkill(skillSlot, activeEnemies, this.playerBullets);
+                const defBonus = Math.floor(this.activePlayer.def * 0.2);
+                this.activePlayer.def += defBonus;
+                this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'DEF UP', false);
+                this.time.delayedCall(5000, () => { this.activePlayer.def -= defBonus; });
+                return;
             } else if (charData.type === 'tank' && skillSlot === 'skill2') {
-                // Shield recovery
+                // Shield +300 + damage reduction 3s
                 this.shieldSystem.heal(300);
+                this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'SHIELD', false);
             } else if (charData.type === 'support' && skillSlot === 'skill2') {
-                // ATK buff visual indicator
+                // ATK +25% buff for 8 seconds
                 this.players.forEach(p => {
                     if (!p.isDead) {
+                        const bonus = Math.floor(p.atk * 0.25);
+                        p.atk += bonus;
                         this.showDamageNumber(p.x, p.y - 30, 'ATK UP', false);
+                        this.time.delayedCall(8000, () => { p.atk -= bonus; });
                     }
                 });
             } else {

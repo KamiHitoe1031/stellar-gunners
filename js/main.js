@@ -25,7 +25,8 @@ const config = {
         FormationScene,
         GameScene,
         UIScene,
-        ResultScene
+        ResultScene,
+        TransformPotScene
     ]
 };
 
