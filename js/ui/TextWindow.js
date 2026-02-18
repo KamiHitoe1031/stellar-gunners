@@ -50,11 +50,14 @@ class TextWindow {
         this.typeTimer = this.scene.time.addEvent({
             delay: 30,
             callback: () => {
+                if (!this.typeTimer) return;
                 i++;
                 this.bodyText.setText(text.substring(0, i));
                 if (i >= text.length) {
-                    this.typeTimer.remove();
-                    this.typeTimer = null;
+                    if (this.typeTimer) {
+                        this.typeTimer.remove();
+                        this.typeTimer = null;
+                    }
                     this.isTyping = false;
                     this.advanceIcon.setAlpha(1);
                     if (onComplete) onComplete();
