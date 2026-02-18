@@ -92,6 +92,25 @@ class EquipmentSystem {
             });
         });
 
+        // Synchro bonus (sub-character stat contribution)
+        const subChars = equipment.subChars || [];
+        if (subChars.length > 0) {
+            const allChars = typeof window !== 'undefined' && window._cachedCharacters;
+            if (allChars) {
+                subChars.forEach(subCharId => {
+                    if (!subCharId) return;
+                    const subChar = allChars.find(c => (c.charId || c.id.replace('_normal', '')) === subCharId);
+                    if (!subChar) return;
+                    // 10% of sub-char base stats, +50% if same attribute
+                    const mult = charData.attribute === subChar.attribute ? 0.15 : 0.10;
+                    hp += Math.floor(subChar.hp * mult);
+                    atk += Math.floor(subChar.atk * mult);
+                    def += Math.floor(subChar.def * mult);
+                    shield += Math.floor(subChar.shield * mult);
+                });
+            }
+        }
+
         // Weapon parts bonuses (percentage-based modifiers stored for Player.js to apply)
         let partBonuses = null;
         if (equipment.weaponId) {

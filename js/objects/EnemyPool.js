@@ -50,11 +50,14 @@ class EnemyPool {
         this.pool.push(boss);
         this.activeBoss = boss;
 
-        EventsCenter.on(GameEvents.BOSS_BREAK, (data) => {
-            if (data.isBroken && boss.active) {
+        // Use a tracked handler so we can clean up if needed
+        const breakHandler = (data) => {
+            if (data.isBroken && boss.active && !boss.isDead) {
                 boss.onBreak();
             }
-        });
+        };
+        EventsCenter.on(GameEvents.BOSS_BREAK, breakHandler);
+        boss._breakHandler = breakHandler;
 
         return boss;
     }
@@ -76,6 +79,11 @@ class EnemyPool {
     }
 
     reset() {
+        // Clean up boss break listener
+        if (this.activeBoss && this.activeBoss._breakHandler) {
+            EventsCenter.off(GameEvents.BOSS_BREAK, this.activeBoss._breakHandler);
+            this.activeBoss._breakHandler = null;
+        }
         this.pool.forEach(enemy => {
             enemy.isDead = false;
             enemy.setActive(false);

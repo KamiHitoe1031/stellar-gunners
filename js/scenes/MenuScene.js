@@ -37,12 +37,14 @@ class MenuScene extends Phaser.Scene {
             { label: '量子変換炉', desc: '装備を量子分解・再構成', action: () => this.scene.start('TransformPotScene') },
             { label: '強化', desc: 'キャラクター強化', action: () => this.scene.start('EnhanceScene') },
             { label: 'ショップ', desc: '武器・素材購入', action: () => this.scene.start('ShopScene') },
+            { label: 'キャラ図鑑', desc: 'キャラクター紹介・スキル情報', action: () => this.scene.start('CharacterGuideScene') },
             { label: 'ギャラリー', desc: '回想シナリオ再生', action: () => this.scene.start('GalleryScene') },
+            { label: 'ルール', desc: 'ゲームルール説明', action: () => this.scene.start('RulesScene') },
             { label: '設定', desc: '音量・表示設定', action: () => this.scene.start('SettingsScene') },
         ];
 
         buttons.forEach((btn, i) => {
-            const y = 155 + i * 62;
+            const y = 140 + i * 54;
             this.createMenuButton(cx, y, btn.label, btn.desc, btn.action);
         });
 
@@ -54,20 +56,20 @@ class MenuScene extends Phaser.Scene {
     }
 
     createMenuButton(x, y, label, desc, action) {
-        const bg = this.add.rectangle(x, y, 350, 60, 0x1a2244, 0.9)
+        const bg = this.add.rectangle(x, y, 350, 50, 0x1a2244, 0.9)
             .setInteractive({ useHandCursor: true })
             .setStrokeStyle(1, 0x3355aa);
 
-        const labelText = this.add.text(x - 140, y - 12, label, {
-            fontSize: '22px', fontFamily: 'Arial', color: '#ffffff'
+        const labelText = this.add.text(x - 140, y - 10, label, {
+            fontSize: '20px', fontFamily: 'Arial', color: '#ffffff'
         });
 
         const descText = this.add.text(x - 140, y + 12, desc, {
-            fontSize: '12px', fontFamily: 'Arial', color: '#8899aa'
+            fontSize: '11px', fontFamily: 'Arial', color: '#8899aa'
         });
 
         const arrow = this.add.text(x + 150, y, '>', {
-            fontSize: '24px', fontFamily: 'Arial', color: '#4488ff'
+            fontSize: '22px', fontFamily: 'Arial', color: '#4488ff'
         }).setOrigin(0.5);
 
         bg.on('pointerover', () => {
@@ -78,6 +80,9 @@ class MenuScene extends Phaser.Scene {
             bg.setFillStyle(0x1a2244, 0.9);
             bg.setStrokeStyle(1, 0x3355aa);
         });
-        bg.on('pointerdown', action);
+        bg.on('pointerdown', () => {
+            AudioManager.playSFX('sfx_button');
+            action();
+        });
     }
 }

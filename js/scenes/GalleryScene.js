@@ -28,7 +28,9 @@ class GalleryScene extends Phaser.Scene {
 
         // Category tabs
         const categories = [
-            { key: 'main_story', label: 'メインストーリー' }
+            { key: 'main_story', label: 'メインストーリー' },
+            { key: 'character', label: 'キャラクター' },
+            { key: 'event', label: 'イベント' }
         ];
 
         categories.forEach((cat, i) => {
@@ -90,20 +92,33 @@ class GalleryScene extends Phaser.Scene {
         if (isUnlocked) {
             bg.setInteractive({ useHandCursor: true });
 
+            // Thumbnail background
+            if (entry.thumbnailKey && this.textures.exists(entry.thumbnailKey)) {
+                const thumb = this.add.image(x + w / 2, y + h / 2, entry.thumbnailKey);
+                thumb.setDisplaySize(w, h);
+                thumb.setAlpha(0.4);
+            }
+
             // Title
             this.add.text(x + 12, y + 10, entry.title, {
-                fontSize: '15px', fontFamily: 'Arial', color: '#ffffff'
+                fontSize: '15px', fontFamily: 'Arial', color: '#ffffff',
+                stroke: '#000000', strokeThickness: 2
             });
 
-            // Chapter label
-            this.add.text(x + 12, y + 30, `Chapter ${entry.chapter}`, {
-                fontSize: '10px', fontFamily: 'Arial', color: '#4488ff'
+            // Category + Chapter label
+            const catLabels = { main_story: 'メイン', character: 'キャラ', event: 'イベント' };
+            const catLabel = catLabels[entry.category] || '';
+            const chapterText = entry.chapter > 0 ? `Ch.${entry.chapter}` : catLabel;
+            this.add.text(x + 12, y + 30, chapterText, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#4488ff',
+                stroke: '#000000', strokeThickness: 1
             });
 
             // Description
             this.add.text(x + 12, y + 50, entry.description, {
-                fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa',
-                wordWrap: { width: w - 24 }
+                fontSize: '11px', fontFamily: 'Arial', color: '#cccccc',
+                wordWrap: { width: w - 24 },
+                stroke: '#000000', strokeThickness: 1
             });
 
             // Play icon

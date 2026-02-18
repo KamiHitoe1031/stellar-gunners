@@ -206,7 +206,18 @@ class ResultScene extends Phaser.Scene {
         retryImg.on('pointerout', () => retryImg.setAlpha(1));
         retryImg.on('pointerdown', () => {
             const chars = this.cache.json.get('characters');
-            const party = chars.slice(0, 3);
+            const weaponsData = this.cache.json.get('weapons');
+            const modulesData = this.cache.json.get('modules');
+            const save = SaveManager.load();
+            let party = this.partyIds.map(id => {
+                const base = chars.find(c => c.id === id);
+                return base ? EquipmentSystem.getCharBattleStats(base, save, weaponsData, modulesData) : null;
+            }).filter(Boolean);
+            if (party.length === 0) {
+                party = chars.slice(0, 3).map(c =>
+                    EquipmentSystem.getCharBattleStats(c, save, weaponsData, modulesData)
+                );
+            }
             this.scene.start('GameScene', {
                 stageId: this.stageData.id,
                 stageData: this.stageData,

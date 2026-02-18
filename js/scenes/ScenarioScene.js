@@ -9,6 +9,7 @@ class ScenarioScene extends Phaser.Scene {
         this.isGalleryMode = data.isGallery || false;
         this.currentIndex = 0;
         this.isAutoMode = false;
+        this.isSkipping = false;
         this.textComplete = false;
         this.isTransitioning = false;
     }
@@ -74,7 +75,15 @@ class ScenarioScene extends Phaser.Scene {
         // Skip button
         this.skipBtn = this.add.text(GAME_WIDTH - 140, btnY, 'SKIP', btnStyle)
             .setInteractive({ useHandCursor: true }).setDepth(200);
-        this.skipBtn.on('pointerdown', () => this.skipAll());
+        this.skipBtn.on('pointerdown', () => {
+            const save = SaveManager.load();
+            const skipMode = save.settings?.skipMode || 'all';
+            if (skipMode === 'read_only') {
+                this.skipRead();
+            } else {
+                this.skipAll();
+            }
+        });
 
         // Log button
         this.logBtn = this.add.text(GAME_WIDTH - 80, btnY, 'LOG', btnStyle)
@@ -84,7 +93,11 @@ class ScenarioScene extends Phaser.Scene {
         // Hover effects
         [this.autoBtn, this.skipBtn, this.logBtn].forEach(btn => {
             btn.on('pointerover', () => btn.setColor('#bbddff'));
-            btn.on('pointerout', () => btn.setColor(btn === this.autoBtn && this.isAutoMode ? '#44ff88' : '#8899aa'));
+            btn.on('pointerout', () => {
+                if (btn === this.autoBtn && this.isAutoMode) btn.setColor('#44ff88');
+                else if (btn === this.skipBtn && this.isSkipping) btn.setColor('#ff8844');
+                else btn.setColor('#8899aa');
+            });
         });
     }
 
@@ -276,11 +289,56 @@ class ScenarioScene extends Phaser.Scene {
     }
 
     skipAll() {
+        this.isSkipping = false;
         // Mark all lines as read
         this.scenarioData.forEach(line => {
             SaveManager.markAsRead(this.scenarioId, line.seqNo);
         });
         this.completeScenario();
+    }
+
+    skipRead() {
+        if (this.isSkipping) {
+            // Toggle off
+            this.isSkipping = false;
+            this.skipBtn.setColor('#8899aa');
+            this.skipBtn.setText('SKIP');
+            return;
+        }
+
+        this.isSkipping = true;
+        this.skipBtn.setColor('#ff8844');
+        this.skipBtn.setText('SKIP ●');
+        this._advanceSkipRead();
+    }
+
+    _advanceSkipRead() {
+        if (!this.isSkipping) return;
+        if (this.currentIndex >= this.scenarioData.length) {
+            this.isSkipping = false;
+            this.completeScenario();
+            return;
+        }
+
+        const line = this.scenarioData[this.currentIndex];
+        if (!SaveManager.isRead(this.scenarioId, line.seqNo)) {
+            // Unread line found - stop skipping and show normally
+            this.isSkipping = false;
+            this.skipBtn.setColor('#8899aa');
+            this.skipBtn.setText('SKIP');
+            this.showLine(this.currentIndex);
+            return;
+        }
+
+        // Read line - show briefly (text instant), then advance after 50ms
+        this.textWindow.showText(line.speaker, line.text, () => {});
+        this.textWindow.showAllText();
+        this.updatePortrait(line.speakerSpriteKey, line.expression);
+        if (line.bgKey && line.bgKey !== '') this.updateBackground(line.bgKey);
+        this.backLog.addEntry(line.speaker, line.text);
+
+        this.currentIndex++;
+        this.time.delayedCall(50, () => this._advanceSkipRead());
     }
 
     completeScenario() {

@@ -36,22 +36,24 @@ stellar-gunners/
 │   │   ├── EnhanceScene.js        # 強化画面
 │   │   └── ShopScene.js           # ショップ画面
 │   ├── objects/
-│   │   ├── Player.js              # プレイヤーキャラクラス
-│   │   ├── Enemy.js               # 敵基底クラス
+│   │   ├── Player.js              # プレイヤーキャラクラス（スプライトアニメ対応）
+│   │   ├── Enemy.js               # 敵基底クラス（スプライトアニメ対応）
 │   │   ├── Boss.js                # ボスクラス（Enemyを継承）
 │   │   ├── Bullet.js              # 弾クラス
 │   │   ├── BulletPool.js          # 弾オブジェクトプール
 │   │   ├── EnemyPool.js           # 敵オブジェクトプール
-│   │   └── HealthBar.js           # HPバークラス
+│   │   ├── HealthBar.js           # HPバークラス
+│   │   └── Obstacle.js            # 障害物クラス（壁・バリケード・柱・箱）
 │   ├── systems/
 │   │   ├── DamageSystem.js        # ダメージ計算（属性相性含む）
 │   │   ├── ShieldSystem.js        # シールド管理
 │   │   ├── BreakSystem.js         # ブレイクゲージ管理
 │   │   ├── SkillSystem.js         # スキル発動・クールダウン
-│   │   ├── WaveManager.js         # ウェーブ管理・敵スポーン
+│   │   ├── WaveManager.js         # エリアベースウェーブ管理
 │   │   ├── DropSystem.js          # ドロップ報酬生成
 │   │   ├── SaveManager.js         # localStorage保存/読込
 │   │   ├── EquipmentSystem.js     # 装備・強化計算
+│   │   ├── ObstacleManager.js     # 障害物配置・管理
 │   │   └── ScenarioManager.js     # シナリオ再生・スキップ・既読管理
 │   ├── ui/
 │   │   ├── SkillButton.js         # スキルボタンUI
@@ -548,6 +550,82 @@ def validate(data_dir):
 4. エラーがあれば修正してやり直し
 5. ゲーム再起動でJSONを再読み込み
 ```
+
+## マルチエリアシステム
+
+### 概要
+ステージは複数のエリアで構成され、各エリアには独自の背景テーマ、障害物レイアウト、敵ウェーブがある。
+
+### stages.json のエリア形式
+```json
+{
+  "id": "stage_1_1",
+  "areas": [
+    {
+      "bgTheme": "city",
+      "layout": "sparse",
+      "areaName": "市街地外縁",
+      "waves": ["enemy_drone_01:3,enemy_soldier_01:2", "enemy_soldier_01:4"]
+    },
+    {
+      "bgTheme": "city_interior",
+      "layout": "moderate",
+      "areaName": "ビル内部",
+      "waves": ["enemy_elite_01:1,enemy_soldier_01:3"]
+    }
+  ]
+}
+```
+
+### エリア遷移フロー
+1. 全ウェーブクリア → `AREA_CLEARED` イベント
+2. 2秒後にポータル出現（緑色パルス+EXITテキスト）
+3. プレイヤー接触 or 8秒タイムアウトで遷移
+4. カメラフェードアウト → 敵/弾リセット → 背景/障害物切替 → フェードイン
+5. 最終エリアクリアで `STAGE_CLEARED`
+
+### 背景テーマ
+`city`, `city_interior`, `city_ruins`, `lab`, `lab_corridor`, `underground`, `boss_arena`
+
+### 障害物レイアウト
+`open`(0個), `sparse`(4個), `moderate`(8個), `corridor`(12個), `pillars`(6個), `arena`(4個), `bunker`(10個)
+
+## 障害物システム
+
+### 障害物タイプ（constants.js: OBSTACLE_TYPES）
+| タイプ | サイズ | 破壊可能 | HP |
+|--------|--------|----------|-----|
+| wall | 64x16 | No | - |
+| barricade | 48x12 | Yes | 300 |
+| pillar | 24x24 | No | - |
+| crate | 32x32 | Yes | 150 |
+
+### 物理コリジョン
+- プレイヤー/敵: 障害物と衝突（通過不可）
+- 弾: 障害物に当たると消滅（piercing弾は通過）
+- 破壊可能障害物: 弾ダメージでHP減少→0で破壊
+
+## スプライトアニメーション
+
+### キャラクター（13フレーム スプライトシート）
+| フレーム | 状態 | 説明 |
+|---------|------|------|
+| 0-2 | idle | ゆっくり上下ボブ |
+| 3-6 | walk | 脚交互動作 |
+| 7-8 | fire | 腕伸ばし→戻り+マズルフラッシュ |
+| 9 | hit | 赤オーバーレイ+横ずれ |
+| 10-12 | death | 段階的フェードアウト |
+
+### 敵（8フレーム スプライトシート）
+| フレーム | 状態 | 説明 |
+|---------|------|------|
+| 0-1 | idle | 微動ボブ |
+| 2-4 | walk | 移動アニメ |
+| 5 | hit | 赤フラッシュ |
+| 6-7 | death | フェード+沈み |
+
+### アニメFPS（constants.js: ANIM_FPS）
+idle:4, walk:8, fire:12, hit:10, death:6
 
 ## 実装上の注意
 

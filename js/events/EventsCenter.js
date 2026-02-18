@@ -16,5 +16,8 @@ const GameEvents = {
     BOSS_PHASE_CHANGE: 'boss-phase-change',
     BOSS_BREAK: 'boss-break',
     BOSS_SPAWNED: 'boss-spawned',
-    PAUSE_TOGGLE: 'pause-toggle'
+    PAUSE_TOGGLE: 'pause-toggle',
+    AREA_CLEARED: 'area-cleared',
+    AREA_TRANSITION: 'area-transition',
+    AREA_STARTED: 'area-started'
 };

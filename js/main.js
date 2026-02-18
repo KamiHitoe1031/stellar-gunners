@@ -31,7 +31,9 @@ const config = {
         EnhanceScene,
         ShopScene,
         TransformPotScene,
-        SettingsScene
+        SettingsScene,
+        RulesScene,
+        CharacterGuideScene
     ]
 };
 

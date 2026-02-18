@@ -40,12 +40,13 @@ class EnhanceScene extends Phaser.Scene {
             { key: 'character', label: 'キャラ強化' },
             { key: 'weapon', label: '武器強化' },
             { key: 'parts', label: '武器改造' },
-            { key: 'awakening', label: '覚醒' }
+            { key: 'awakening', label: '覚醒' },
+            { key: 'synchro', label: 'シンクロ' }
         ];
         tabs.forEach((tab, i) => {
-            const tx = 100 + i * 120;
+            const tx = 80 + i * 105;
             const isActive = this.currentTab === tab.key;
-            const tabBg = this.add.rectangle(tx, 62, 130, 28, isActive ? 0x2244aa : 0x1a1a33)
+            const tabBg = this.add.rectangle(tx, 62, 100, 28, isActive ? 0x2244aa : 0x1a1a33)
                 .setInteractive({ useHandCursor: true })
                 .setStrokeStyle(1, isActive ? 0x4488ff : 0x333355);
             this.add.text(tx, 62, tab.label, {
@@ -65,6 +66,8 @@ class EnhanceScene extends Phaser.Scene {
             this.showPartsTab();
         } else if (this.currentTab === 'awakening') {
             this.showAwakeningTab();
+        } else if (this.currentTab === 'synchro') {
+            this.showSynchroTab();
         }
     }
 
@@ -634,6 +637,231 @@ class EnhanceScene extends Phaser.Scene {
             duration: 1000, ease: 'Power2',
             onComplete: () => text.destroy()
         });
+    }
+
+    showSynchroTab() {
+        this.add.text(50, 88, 'サブキャラシンクロ - メインキャラにサブキャラを配置してステータスボーナス:', {
+            fontSize: '12px', fontFamily: 'Arial', color: '#ccaaff'
+        });
+
+        const characters = this.characters;
+        const save = this.save;
+
+        // Character selection cards
+        characters.forEach((char, i) => {
+            const x = 20 + (i % 3) * 250;
+            const y = 115 + Math.floor(i / 3) * 220;
+            const charId = char.charId || char.id.replace('_normal', '');
+
+            // Card bg
+            const bg = this.add.rectangle(x + 115, y + 95, 240, 210, 0x1a1a33)
+                .setStrokeStyle(1, 0x334466);
+
+            // Character name
+            this.add.text(x + 10, y + 5, char.name, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ffffff'
+            });
+
+            // Attribute badge
+            const attrColor = ATTRIBUTE_COLORS[char.attribute] || 0x888888;
+            const attrName = ATTRIBUTE_NAMES[char.attribute] || char.attribute;
+            this.add.text(x + 10, y + 24, attrName, {
+                fontSize: '10px', fontFamily: 'Arial', color: `#${attrColor.toString(16).padStart(6, '0')}`
+            });
+
+            // Sub-character slots (3 slots)
+            const equipment = save.equipment?.[char.id] || {};
+            const subChars = equipment.subChars || [null, null, null];
+
+            for (let s = 0; s < 3; s++) {
+                const sx = x + 10 + s * 76;
+                const sy = y + 48;
+
+                // Slot background
+                const slotBg = this.add.rectangle(sx + 33, sy + 30, 70, 60, 0x111122)
+                    .setInteractive({ useHandCursor: true })
+                    .setStrokeStyle(1, 0x333355);
+
+                const subCharId = subChars[s];
+                if (subCharId) {
+                    const subChar = characters.find(c => (c.charId || c.id.replace('_normal', '')) === subCharId);
+                    if (subChar) {
+                        // Show sub-char icon
+                        const iconKey = `icon_${subCharId}`;
+                        if (this.textures.exists(iconKey)) {
+                            this.add.image(sx + 33, sy + 20, iconKey).setDisplaySize(32, 32);
+                        }
+                        this.add.text(sx + 33, sy + 45, subChar.name.substring(0, 4), {
+                            fontSize: '9px', fontFamily: 'Arial', color: '#cccccc'
+                        }).setOrigin(0.5);
+                    }
+                } else {
+                    this.add.text(sx + 33, sy + 25, '+', {
+                        fontSize: '20px', fontFamily: 'Arial', color: '#555555'
+                    }).setOrigin(0.5);
+                    this.add.text(sx + 33, sy + 48, 'スロット' + (s + 1), {
+                        fontSize: '8px', fontFamily: 'Arial', color: '#444444'
+                    }).setOrigin(0.5);
+                }
+
+                slotBg.on('pointerdown', () => {
+                    this.showSubCharSelection(char, s);
+                });
+                slotBg.on('pointerover', () => slotBg.setStrokeStyle(1, 0x5577cc));
+                slotBg.on('pointerout', () => slotBg.setStrokeStyle(1, 0x333355));
+            }
+
+            // Synchro bonus display
+            const bonuses = this.calcSynchroBonus(char, subChars);
+            if (bonuses.total > 0) {
+                this.add.text(x + 10, y + 120, 'シンクロボーナス:', {
+                    fontSize: '10px', fontFamily: 'Arial', color: '#aa88ff'
+                });
+                const bonusLines = [];
+                if (bonuses.hp > 0) bonusLines.push(`HP+${bonuses.hp}`);
+                if (bonuses.atk > 0) bonusLines.push(`ATK+${bonuses.atk}`);
+                if (bonuses.def > 0) bonusLines.push(`DEF+${bonuses.def}`);
+                if (bonuses.shield > 0) bonusLines.push(`Shield+${bonuses.shield}`);
+                this.add.text(x + 10, y + 136, bonusLines.join('  '), {
+                    fontSize: '10px', fontFamily: 'Arial', color: '#ccaaff'
+                });
+
+                // Attribute match bonus
+                if (bonuses.attrMatch > 0) {
+                    this.add.text(x + 10, y + 154, `属性一致ボーナス: x${bonuses.attrMatch}`, {
+                        fontSize: '9px', fontFamily: 'Arial', color: '#ffcc44'
+                    });
+                }
+            }
+        });
+    }
+
+    showSubCharSelection(mainChar, slotIndex) {
+        this.clearUI();
+        this.save = SaveManager.load();
+        this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0e0e22);
+
+        this.createBackButton(() => {
+            this.currentTab = 'synchro';
+            this.showMain();
+        });
+
+        const mainCharId = mainChar.charId || mainChar.id.replace('_normal', '');
+        this.add.text(GAME_WIDTH / 2, 28, `${mainChar.name} - スロット${slotIndex + 1} サブキャラ選択`, {
+            fontSize: '18px', fontFamily: 'Arial', color: '#ffffff',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5);
+
+        // Current equipment
+        const equipment = this.save.equipment?.[mainChar.id] || {};
+        const currentSubChars = equipment.subChars || [null, null, null];
+
+        // Show available characters (exclude main char and already assigned)
+        const usedIds = currentSubChars.filter((id, i) => id && i !== slotIndex);
+        const available = this.characters.filter(c => {
+            const cid = c.charId || c.id.replace('_normal', '');
+            return cid !== mainCharId && !usedIds.includes(cid);
+        });
+
+        // "Remove" option
+        const removeBg = this.add.rectangle(GAME_WIDTH / 2, 75, 300, 30, 0x331111)
+            .setInteractive({ useHandCursor: true })
+            .setStrokeStyle(1, 0x553333);
+        this.add.text(GAME_WIDTH / 2, 75, '解除 (サブキャラなし)', {
+            fontSize: '13px', fontFamily: 'Arial', color: '#ff6666'
+        }).setOrigin(0.5);
+        removeBg.on('pointerdown', () => {
+            this.assignSubChar(mainChar.id, slotIndex, null);
+        });
+
+        available.forEach((char, i) => {
+            const x = 30 + (i % 3) * 250;
+            const y = 110 + Math.floor(i / 3) * 100;
+            const charId = char.charId || char.id.replace('_normal', '');
+
+            const bg = this.add.rectangle(x + 115, y + 35, 240, 80, 0x1a1a33)
+                .setInteractive({ useHandCursor: true })
+                .setStrokeStyle(1, 0x334466);
+
+            // Icon
+            const iconKey = `icon_${charId}`;
+            if (this.textures.exists(iconKey)) {
+                this.add.image(x + 30, y + 35, iconKey).setDisplaySize(44, 44);
+            }
+
+            // Name + attribute
+            this.add.text(x + 60, y + 12, char.name, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ffffff'
+            });
+            const attrName = ATTRIBUTE_NAMES[char.attribute] || char.attribute;
+            this.add.text(x + 60, y + 30, `${attrName} / ${TYPE_NAMES[char.type] || char.type}`, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#888888'
+            });
+
+            // Bonus preview
+            const bonus = this.calcSubCharBonus(mainChar, char);
+            this.add.text(x + 60, y + 46, `HP+${bonus.hp}  ATK+${bonus.atk}  DEF+${bonus.def}  Shield+${bonus.shield}`, {
+                fontSize: '9px', fontFamily: 'Arial', color: '#aaaacc'
+            });
+
+            // Attribute match indicator
+            if (mainChar.attribute === char.attribute) {
+                this.add.text(x + 210, y + 12, '属性一致!', {
+                    fontSize: '10px', fontFamily: 'Arial', color: '#ffcc44'
+                });
+            }
+
+            bg.on('pointerdown', () => {
+                this.assignSubChar(mainChar.id, slotIndex, charId);
+            });
+            bg.on('pointerover', () => bg.setStrokeStyle(2, 0x5577cc));
+            bg.on('pointerout', () => bg.setStrokeStyle(1, 0x334466));
+        });
+    }
+
+    assignSubChar(mainCharId, slotIndex, subCharId) {
+        const save = SaveManager.load();
+        if (!save.equipment) save.equipment = {};
+        if (!save.equipment[mainCharId]) {
+            save.equipment[mainCharId] = { weaponId: null, modules: [null, null, null, null], subChars: [null, null, null] };
+        }
+        if (!save.equipment[mainCharId].subChars) {
+            save.equipment[mainCharId].subChars = [null, null, null];
+        }
+        save.equipment[mainCharId].subChars[slotIndex] = subCharId;
+        SaveManager.save(save);
+        AudioManager.playSFX('sfx_button');
+        this.currentTab = 'synchro';
+        this.showMain();
+    }
+
+    calcSubCharBonus(mainChar, subChar) {
+        // Sub-char contributes 10% of their base stats
+        // +50% bonus if same attribute
+        const mult = mainChar.attribute === subChar.attribute ? 0.15 : 0.10;
+        return {
+            hp: Math.floor(subChar.hp * mult),
+            atk: Math.floor(subChar.atk * mult),
+            def: Math.floor(subChar.def * mult),
+            shield: Math.floor(subChar.shield * mult)
+        };
+    }
+
+    calcSynchroBonus(mainChar, subCharIds) {
+        const result = { hp: 0, atk: 0, def: 0, shield: 0, total: 0, attrMatch: 0 };
+        subCharIds.forEach(subId => {
+            if (!subId) return;
+            const subChar = this.characters.find(c => (c.charId || c.id.replace('_normal', '')) === subId);
+            if (!subChar) return;
+            const bonus = this.calcSubCharBonus(mainChar, subChar);
+            result.hp += bonus.hp;
+            result.atk += bonus.atk;
+            result.def += bonus.def;
+            result.shield += bonus.shield;
+            result.total++;
+            if (mainChar.attribute === subChar.attribute) result.attrMatch++;
+        });
+        return result;
     }
 
     createBackButton(action) {

@@ -10,9 +10,17 @@ class GameScene extends Phaser.Scene {
         this.isPaused = false;
         this.isGameOver = false;
         this.isCleared = false;
+        this.isTransitioning = false;
         this.elapsedTime = 0;
         this.totalDamageDealt = 0;
         this.partyDeaths = 0;
+        this.floorObjects = [];
+        this.exitPortal = null;
+        this.exitPortalGlow = null;
+        this.exitPortalText = null;
+        this.exitPortalOverlap = null;
+        this.portalGuideArrow = null;
+        this.areaSplashObjects = [];
     }
 
     create() {
@@ -21,9 +29,6 @@ class GameScene extends Phaser.Scene {
         // Camera and world bounds
         this.physics.world.setBounds(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
         this.cameras.main.setBounds(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-
-        // Draw floor grid
-        this.createFloor();
 
         // Create players
         this.players = [];
@@ -57,6 +62,9 @@ class GameScene extends Phaser.Scene {
         // Effect system
         this.effects = new EffectSystem(this);
 
+        // Obstacle manager
+        this.obstacleManager = new ObstacleManager(this);
+
         // Wave manager
         this.waveManager = new WaveManager(this);
         this.waveManager.init(this.stageData, this.enemiesData);
@@ -74,7 +82,7 @@ class GameScene extends Phaser.Scene {
             THREE: this.input.keyboard.addKey('THREE')
         };
 
-        // Collisions
+        // Base collisions (players, enemies, bullets)
         this.setupCollisions();
 
         // Launch UI Scene
@@ -91,8 +99,15 @@ class GameScene extends Phaser.Scene {
             stroke: '#000000', strokeThickness: 4
         }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
 
+        // Area name text
+        this.areaNameText = this.add.text(FIELD_WIDTH / 2, FIELD_HEIGHT / 2 - 140, '', {
+            fontSize: '22px', fontFamily: 'Arial', color: '#88ccff',
+            stroke: '#000000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(100).setScrollFactor(0).setAlpha(0);
+
         // Event listeners
         EventsCenter.on(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
+        EventsCenter.on(GameEvents.AREA_CLEARED, this.onAreaCleared, this);
         EventsCenter.on(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
         EventsCenter.on(GameEvents.BOSS_BREAK, this.onBossBreak, this);
         EventsCenter.on(GameEvents.BOSS_PHASE_CHANGE, this.onBossPhaseChange, this);
@@ -102,53 +117,277 @@ class GameScene extends Phaser.Scene {
         // Battle BGM
         AudioManager.playBGM('bgm_battle');
 
-        // Start first wave
-        this.time.delayedCall(1000, () => this.startNextWave());
+        // Load first area
+        this.loadArea(0);
     }
 
-    createFloor() {
-        // Try to use a background image based on chapter
-        const chapter = this.stageData.chapter || 1;
-        const bgMap = {
-            1: 'bg_battle_city',
-            2: 'bg_battle_lab',
-            3: 'bg_battle_city'
-        };
-        const bgKey = bgMap[chapter] || 'bg_battle_city';
+    // ===== Area Management =====
+
+    loadArea(areaIndex) {
+        const area = this.waveManager.getCurrentArea();
+        if (!area) return;
+
+        // Clear floor and obstacles
+        this.clearFloor();
+        this.obstacleManager.clearAll();
+
+        // Draw themed background
+        this.createFloorForTheme(area.bgTheme);
+
+        // Generate obstacles for this area
+        this.obstacleManager.generateForArea(area.layout);
+
+        // Setup obstacle collisions
+        this.setupObstacleCollisions();
+
+        // Reset player positions to center
+        this.players.forEach((p, i) => {
+            if (!p.isDead) {
+                p.setPosition(FIELD_WIDTH / 2 + (i - 1) * 50, FIELD_HEIGHT / 2 + 50);
+            }
+        });
+
+        // Show area name
+        if (area.areaName) {
+            this.showAreaName(area.areaName, areaIndex);
+        }
+
+        // Emit AREA_STARTED for first area too
+        if (areaIndex === 0) {
+            EventsCenter.emit(GameEvents.AREA_STARTED, {
+                areaIndex: 0,
+                totalAreas: this.waveManager.getTotalAreas(),
+                bgTheme: area.bgTheme,
+                layout: area.layout,
+                areaName: area.areaName
+            });
+        }
+
+        // Start first wave in area after delay
+        this.time.delayedCall(1000, () => {
+            if (!this.isGameOver && !this.isCleared) {
+                this.startNextWaveInArea();
+            }
+        });
+    }
+
+    showAreaName(name, areaIndex) {
+        // Clean up previous splash
+        this.areaSplashObjects.forEach(obj => { if (obj && obj.destroy) obj.destroy(); });
+        this.areaSplashObjects = [];
+
+        const totalAreas = this.waveManager.getTotalAreas();
+        const camCx = GAME_WIDTH / 2;
+        const camCy = GAME_HEIGHT / 2;
+
+        // Semi-transparent black bar
+        const bar = this.add.rectangle(camCx, camCy, GAME_WIDTH, 100, 0x000000, 0.6)
+            .setScrollFactor(0).setDepth(150).setAlpha(0);
+        this.areaSplashObjects.push(bar);
+
+        // Area number (small, above center)
+        const areaNum = this.add.text(camCx, camCy - 18, `▸ Area ${areaIndex + 1}/${totalAreas}`, {
+            fontSize: '14px', fontFamily: 'Arial', color: '#88ccff',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(151).setAlpha(0);
+        this.areaSplashObjects.push(areaNum);
+
+        // Area name (large, below center)
+        const areaTitle = this.add.text(camCx, camCy + 12, name, {
+            fontSize: '28px', fontFamily: 'Arial', color: '#ffffff',
+            stroke: '#000000', strokeThickness: 5
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(151).setAlpha(0);
+        this.areaSplashObjects.push(areaTitle);
+
+        // Fade in
+        this.tweens.add({
+            targets: [bar, areaNum, areaTitle],
+            alpha: 1,
+            duration: 300,
+            onComplete: () => {
+                // Hold for 1.5s then fade out
+                this.tweens.add({
+                    targets: [bar, areaNum, areaTitle],
+                    alpha: 0,
+                    duration: 800,
+                    delay: 1500,
+                    onComplete: () => {
+                        this.areaSplashObjects.forEach(obj => { if (obj && obj.destroy) obj.destroy(); });
+                        this.areaSplashObjects = [];
+                    }
+                });
+            }
+        });
+
+        // Also update the smaller area name text for backup
+        this.areaNameText.setText('');
+    }
+
+    clearFloor() {
+        this.floorObjects.forEach(obj => {
+            if (obj && obj.destroy) obj.destroy();
+        });
+        this.floorObjects = [];
+    }
+
+    createFloorForTheme(theme) {
+        const bgKey = `bg_theme_${theme}`;
 
         if (this.textures.exists(bgKey)) {
             const bg = this.add.image(FIELD_WIDTH / 2, FIELD_HEIGHT / 2, bgKey);
             bg.setDisplaySize(FIELD_WIDTH, FIELD_HEIGHT);
             bg.setDepth(0);
-            // Semi-transparent grid overlay for gameplay clarity
-            const g = this.add.graphics();
-            g.lineStyle(1, 0x222244, 0.15);
-            for (let x = 0; x <= FIELD_WIDTH; x += 64) {
-                g.lineBetween(x, 0, x, FIELD_HEIGHT);
-            }
-            for (let y = 0; y <= FIELD_HEIGHT; y += 64) {
-                g.lineBetween(0, y, FIELD_WIDTH, y);
-            }
-            g.lineStyle(2, 0x4444aa, 0.3);
-            g.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-            g.setDepth(1);
+            this.floorObjects.push(bg);
         } else {
-            // Fallback grid floor
-            const g = this.add.graphics();
-            g.fillStyle(0x1a1a2e, 1);
-            g.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-            g.lineStyle(1, 0x222244, 0.3);
-            for (let x = 0; x <= FIELD_WIDTH; x += 64) {
-                g.lineBetween(x, 0, x, FIELD_HEIGHT);
+            // Try chapter-based background
+            const chapter = this.stageData.chapter || 1;
+            const bgMap = { 1: 'bg_battle_city', 2: 'bg_battle_lab', 3: 'bg_battle_city' };
+            const fallbackKey = bgMap[chapter] || 'bg_battle_city';
+
+            if (this.textures.exists(fallbackKey)) {
+                const bg = this.add.image(FIELD_WIDTH / 2, FIELD_HEIGHT / 2, fallbackKey);
+                bg.setDisplaySize(FIELD_WIDTH, FIELD_HEIGHT);
+                bg.setDepth(0);
+                this.floorObjects.push(bg);
+            } else {
+                // Grid fallback
+                const g = this.add.graphics();
+                g.fillStyle(0x1a1a2e, 1);
+                g.fillRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+                g.setDepth(0);
+                this.floorObjects.push(g);
             }
-            for (let y = 0; y <= FIELD_HEIGHT; y += 64) {
-                g.lineBetween(0, y, FIELD_WIDTH, y);
-            }
-            g.lineStyle(2, 0x4444aa, 0.5);
-            g.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-            g.setDepth(0);
+        }
+
+        // Grid overlay for gameplay clarity
+        const grid = this.add.graphics();
+        grid.lineStyle(1, 0x222244, 0.15);
+        for (let x = 0; x <= FIELD_WIDTH; x += 64) {
+            grid.lineBetween(x, 0, x, FIELD_HEIGHT);
+        }
+        for (let y = 0; y <= FIELD_HEIGHT; y += 64) {
+            grid.lineBetween(0, y, FIELD_WIDTH, y);
+        }
+        grid.lineStyle(2, 0x4444aa, 0.3);
+        grid.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+        grid.setDepth(1);
+        this.floorObjects.push(grid);
+    }
+
+    showExitPortal() {
+        if (this.exitPortal) return;
+
+        const cx = FIELD_WIDTH / 2;
+        const cy = FIELD_HEIGHT / 4;
+
+        // Outer glow (pulsing)
+        this.exitPortalGlow = this.add.circle(cx, cy, 80, 0x00ffcc, 0.15)
+            .setDepth(29);
+        this.tweens.add({
+            targets: this.exitPortalGlow, scaleX: 1.2, scaleY: 1.2, alpha: 0.25,
+            duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+        });
+
+        // Main portal (larger)
+        this.exitPortal = this.add.circle(cx, cy, 50, 0x00ffcc, 0.4)
+            .setStrokeStyle(4, 0x00ffcc, 0.9).setDepth(30);
+        this.exitPortalText = this.add.text(cx, cy - 65, 'NEXT AREA ▶', {
+            fontSize: '20px', fontFamily: 'Arial', color: '#00ffcc',
+            stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5).setDepth(31);
+
+        // Pulse animation
+        this.tweens.add({
+            targets: this.exitPortal, scaleX: 1.3, scaleY: 1.3, alpha: 0.7,
+            duration: 800, yoyo: true, repeat: -1
+        });
+
+        // Physics body for overlap detection (enlarged hitbox)
+        this.physics.add.existing(this.exitPortal, true);
+        this.exitPortal.body.setSize(100, 100);
+        this.exitPortal.body.setOffset(-50, -50);
+        this.exitPortalOverlap = this.physics.add.overlap(
+            this.activePlayer, this.exitPortal,
+            () => this.onPlayerReachPortal(),
+            null, this
+        );
+
+        // Portal appear SFX
+        AudioManager.playSFX('sfx_skill');
+
+        // Direction arrow above player
+        this.portalGuideArrow = this.add.text(0, 0, '▲', {
+            fontSize: '24px', fontFamily: 'Arial', color: '#00ffcc',
+            stroke: '#000000', strokeThickness: 3
+        }).setOrigin(0.5).setDepth(90);
+
+        // Auto-transition after 12 seconds
+        this._portalTimeout = this.time.delayedCall(12000, () => {
+            this.onPlayerReachPortal();
+        });
+    }
+
+    onPlayerReachPortal() {
+        if (this.isTransitioning) return;
+        this.isTransitioning = true;
+        this.destroyExitPortal();
+        this.transitionToNextArea();
+    }
+
+    destroyExitPortal() {
+        if (this._portalTimeout) {
+            this._portalTimeout.remove();
+            this._portalTimeout = null;
+        }
+        if (this.exitPortalOverlap) {
+            this.physics.world.removeCollider(this.exitPortalOverlap);
+            this.exitPortalOverlap = null;
+        }
+        if (this.exitPortalGlow) {
+            this.exitPortalGlow.destroy();
+            this.exitPortalGlow = null;
+        }
+        if (this.exitPortal) {
+            this.exitPortal.destroy();
+            this.exitPortal = null;
+        }
+        if (this.exitPortalText) {
+            this.exitPortalText.destroy();
+            this.exitPortalText = null;
+        }
+        if (this.portalGuideArrow) {
+            this.portalGuideArrow.destroy();
+            this.portalGuideArrow = null;
         }
     }
+
+    transitionToNextArea() {
+        AudioManager.playSFX('sfx_portal');
+        this.cameras.main.fadeOut(AREA_TRANSITION_FADE);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            // Deactivate all remaining entities
+            this.enemyPool.reset();
+            this.playerBullets.getGroup().getChildren().forEach(b => {
+                if (b.deactivate) b.deactivate();
+            });
+            this.enemyBullets.getGroup().getChildren().forEach(b => {
+                if (b.deactivate) b.deactivate();
+            });
+
+            const hasNext = this.waveManager.advanceToNextArea();
+            if (hasNext) {
+                this.loadArea(this.waveManager.currentAreaIndex);
+                this.cameras.main.fadeIn(AREA_TRANSITION_FADE);
+                this.cameras.main.once('camerafadeincomplete', () => {
+                    this.cameras.main.flash(100, 255, 255, 255, true);
+                });
+                this.isTransitioning = false;
+            }
+            // If !hasNext, STAGE_CLEARED was emitted by WaveManager
+        });
+    }
+
+    // ===== Collisions =====
 
     setupCollisions() {
         // Player bullets hit enemies
@@ -182,6 +421,47 @@ class GameScene extends Phaser.Scene {
             );
         });
     }
+
+    setupObstacleCollisions() {
+        const obsGroup = this.obstacleManager.getStaticGroup();
+        if (obsGroup.getLength() === 0) return;
+
+        // Players collide with obstacles
+        this.players.forEach(player => {
+            if (!player.isDead) {
+                this.physics.add.collider(player, obsGroup);
+            }
+        });
+
+        // Enemies collide with obstacles
+        this.physics.add.collider(this.enemyPool.getGroup(), obsGroup);
+
+        // Player bullets hit obstacles
+        this.physics.add.overlap(
+            this.playerBullets.getGroup(), obsGroup,
+            this.onBulletHitObstacle, null, this
+        );
+
+        // Enemy bullets hit obstacles
+        this.physics.add.overlap(
+            this.enemyBullets.getGroup(), obsGroup,
+            this.onBulletHitObstacle, null, this
+        );
+    }
+
+    onBulletHitObstacle(bullet, obstacle) {
+        if (!bullet.active) return;
+        if (bullet.piercing) return; // Piercing bullets pass through
+        bullet.deactivate();
+        if (this.effects) {
+            this.effects.hitImpact(bullet.x, bullet.y, 0x888888);
+        }
+        if (obstacle.isDestructible && obstacle.takeDamage) {
+            obstacle.takeDamage(bullet.damage);
+        }
+    }
+
+    // ===== Combat Handlers =====
 
     onPlayerBulletHitEnemy(bullet, enemy) {
         if (!bullet.active || !enemy.active || enemy.isDead) return;
@@ -237,7 +517,6 @@ class GameScene extends Phaser.Scene {
                     const pd = p.passiveData;
                     if (pd.killAtkCurrent < pd.killAtkMax) {
                         pd.killAtkCurrent = Math.min(pd.killAtkMax, pd.killAtkCurrent + pd.killAtkPerKill);
-                        // Apply bonus ATK to all alive party members
                         this.players.forEach(ally => {
                             if (!ally.isDead) {
                                 const bonus = Math.floor(ally.charData.atk * pd.killAtkPerKill);
@@ -254,7 +533,6 @@ class GameScene extends Phaser.Scene {
         if (!bullet.piercing) {
             bullet.deactivate();
         } else {
-            // Piercing trail effect
             this.effects.piercingTrail(bullet.x, bullet.y, bullet.rotation, attrCol);
         }
     }
@@ -262,8 +540,6 @@ class GameScene extends Phaser.Scene {
     onEnemyBulletHitPlayer(player, bullet) {
         if (!bullet.active || !player.active || player.isDead) return;
         if (bullet.isPlayerBullet) return;
-
-        // Dodge i-frames: ignore damage while dodging
         if (player.isDodging) return;
 
         const result = DamageSystem.calculateDamage(
@@ -273,7 +549,7 @@ class GameScene extends Phaser.Scene {
 
         let dmg = result.damage;
 
-        // Passive: damage reduction (Kayla - ヘビーアーマー)
+        // Passive: damage reduction
         if (player.passiveData?.damageReduction) {
             dmg = Math.floor(dmg * (1 - player.passiveData.damageReduction));
         }
@@ -286,15 +562,13 @@ class GameScene extends Phaser.Scene {
         const beforeShield = dmg;
         dmg = this.shieldSystem.applyDamage(dmg);
         if (beforeShield > dmg && beforeShield - dmg > 0) {
-            // Shield absorbed some damage
             this.effects.shieldAbsorb(player.x, player.y);
         }
         if (dmg > 0) {
             player.takeDamage(dmg);
-            // Hit impact on player
             this.effects.hitImpact(player.x, player.y, 0xff4444);
 
-            // Roll for status effect from enemy attribute
+            // Roll for status effect
             const isElite = bullet._enemyCategory === 'elite' || bullet._enemyCategory === 'boss';
             const statusEffect = DamageSystem.rollStatusEffect(bullet.attribute, isElite);
             if (statusEffect && !player.isDead) {
@@ -321,7 +595,6 @@ class GameScene extends Phaser.Scene {
         if (enemy.attackPattern !== 'chase_contact') return;
         if (player.isDodging) return;
 
-        // Contact damage every ~500ms (throttled by checking enemy data)
         if (!enemy._contactCooldown) enemy._contactCooldown = 0;
         if (enemy._contactCooldown > 0) return;
         enemy._contactCooldown = 500;
@@ -335,7 +608,6 @@ class GameScene extends Phaser.Scene {
             player.takeDamage(remaining);
             this.effects.hitImpact(player.x, player.y, 0xff4444);
 
-            // Roll for status effect from contact
             const isElite = enemy.enemyData?.category === 'elite' || enemy.enemyData?.category === 'boss';
             const statusEffect = DamageSystem.rollStatusEffect(enemy.attribute, isElite);
             if (statusEffect && !player.isDead) {
@@ -354,6 +626,8 @@ class GameScene extends Phaser.Scene {
         }
         this.checkGameOver();
     }
+
+    // ===== UI Helpers =====
 
     showDamageNumber(x, y, damage, isCrit) {
         let color, size, label;
@@ -380,6 +654,8 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    // ===== Character Management =====
+
     switchToNextAlive() {
         const aliveIndex = this.players.findIndex((p, i) => !p.isDead && i !== this.activePlayerIndex);
         if (aliveIndex >= 0) {
@@ -397,7 +673,6 @@ class GameScene extends Phaser.Scene {
         this.activePlayer.setAsActive(true);
         this.cameras.main.startFollow(this.activePlayer, true, 0.1, 0.1);
 
-        // Move inactive players to follow
         this.players.forEach((p, i) => {
             if (i !== index && !p.isDead) {
                 p.setPosition(
@@ -413,14 +688,17 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    startNextWave() {
-        const waveData = this.waveManager.startNextWave();
+    // ===== Wave / Area Events =====
+
+    startNextWaveInArea() {
+        const waveData = this.waveManager.startNextWaveInArea();
         if (!waveData) return;
         AudioManager.playSFX('sfx_wave');
 
         const progress = this.waveManager.getProgress();
-        this.waveText.setText(`Wave ${progress.currentWave}/${progress.totalWaves}`);
+        this.waveText.setText(`Area ${progress.currentArea}/${progress.totalAreas} - Wave ${progress.currentWave}/${progress.totalWaves}`);
         this.waveText.setAlpha(1);
+        this.waveText.setColor('#ffcc00');
         this.tweens.add({
             targets: this.waveText,
             alpha: 0,
@@ -450,10 +728,28 @@ class GameScene extends Phaser.Scene {
     }
 
     onWaveCleared() {
-        if (this.waveManager.isComplete()) return;
+        // More waves in current area - start next wave after delay
         this.time.delayedCall(2000, () => {
-            if (!this.isGameOver && !this.isCleared) {
-                this.startNextWave();
+            if (!this.isGameOver && !this.isCleared && !this.isTransitioning) {
+                this.startNextWaveInArea();
+            }
+        });
+    }
+
+    onAreaCleared(data) {
+        if (this.isCleared || this.isGameOver) return;
+
+        // Is this the final area?
+        if (data.areaIndex >= data.totalAreas - 1) {
+            // Final area cleared = stage cleared
+            EventsCenter.emit(GameEvents.STAGE_CLEARED);
+            return;
+        }
+
+        // Show exit portal after delay
+        this.time.delayedCall(AREA_TRANSITION_DELAY, () => {
+            if (!this.isGameOver && !this.isCleared && !this.isTransitioning) {
+                this.showExitPortal();
             }
         });
     }
@@ -461,6 +757,7 @@ class GameScene extends Phaser.Scene {
     onStageCleared() {
         if (this.isCleared) return;
         this.isCleared = true;
+        this.destroyExitPortal();
 
         this.waveText.setText('STAGE CLEAR!');
         this.waveText.setAlpha(1);
@@ -480,7 +777,6 @@ class GameScene extends Phaser.Scene {
 
             SaveManager.markStageCleared(this.stageId, stars);
 
-            // Apply rewards
             const allWeapons = this.cache.json.get('weapons');
             drops.forEach(d => {
                 if (d.type === 'credit') SaveManager.addCredits(d.amount);
@@ -517,7 +813,6 @@ class GameScene extends Phaser.Scene {
             this.cameras.main.shake(300, 0.01);
             AudioManager.playSFX('sfx_explosion');
 
-            // Boss break visual effect
             const boss = this.enemyPool.activeBoss;
             if (boss) {
                 this.effects.bossBreak(boss.x, boss.y);
@@ -540,7 +835,6 @@ class GameScene extends Phaser.Scene {
         this.cameras.main.flash(500, 255, 50, 50);
         AudioManager.playSFX('sfx_explosion');
 
-        // Switch to boss BGM on phase 2
         if (data.phase === 2) {
             AudioManager.playBGM('bgm_boss');
         }
@@ -560,6 +854,7 @@ class GameScene extends Phaser.Scene {
     checkGameOver() {
         if (this.players.every(p => p.isDead)) {
             this.isGameOver = true;
+            this.destroyExitPortal();
             this.waveText.setText('GAME OVER');
             this.waveText.setAlpha(1);
             this.waveText.setColor('#ff0000');
@@ -575,11 +870,14 @@ class GameScene extends Phaser.Scene {
                     timeInSeconds: Math.floor(this.elapsedTime / 1000),
                     totalDamage: this.totalDamageDealt,
                     partyDeaths: this.partyDeaths,
-                    isGameOver: true
+                    isGameOver: true,
+                    partyIds: this.partyData.map(p => p.id)
                 });
             });
         }
     }
+
+    // ===== Main Loop =====
 
     update(time, delta) {
         if (this.isPaused || this.isGameOver || this.isCleared) return;
@@ -588,7 +886,6 @@ class GameScene extends Phaser.Scene {
 
         // Player movement and auto-fire
         if (this.activePlayer && !this.activePlayer.isDead) {
-            // Get joystick input from UIScene if available
             const uiScene = this.scene.get('UIScene');
             const joyInput = uiScene?.getJoystickInput?.() || { active: false, dx: 0, dy: 0 };
             this.activePlayer.updateMovement(this.cursors, this.wasd, delta, joyInput);
@@ -604,7 +901,6 @@ class GameScene extends Phaser.Scene {
                     p.x += (targetX - p.x) * 0.05;
                     p.y += (targetY - p.y) * 0.05;
                     p.nameLabel.setPosition(p.x, p.y - 24);
-                    // Inactive party members also auto-fire
                     p.updateAutoFire(activeEnemies, this.playerBullets, delta);
                 }
             });
@@ -618,7 +914,7 @@ class GameScene extends Phaser.Scene {
             if (e._contactCooldown > 0) e._contactCooldown -= delta;
         });
 
-        // Passive: crit ramp update (Mira - コールドプレシジョン)
+        // Passive: crit ramp
         this.players.forEach(p => {
             if (!p.isDead && p.passiveData?.critRamp) {
                 const pd = p.passiveData;
@@ -637,22 +933,18 @@ class GameScene extends Phaser.Scene {
         this.skillSystem.update(delta);
 
         // Skill input
-        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.Q)) {
-            this.tryUseSkill('skill1');
-        }
-        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.E)) {
-            this.tryUseSkill('skill2');
-        }
-        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.R)) {
-            this.tryUseUlt();
-        }
+        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.Q)) this.tryUseSkill('skill1');
+        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.E)) this.tryUseSkill('skill2');
+        if (Phaser.Input.Keyboard.JustDown(this.skillKeys.R)) this.tryUseUlt();
 
         // Dodge input
         if (Phaser.Input.Keyboard.JustDown(this.skillKeys.SPACE)) {
             if (this.activePlayer && !this.activePlayer.isDead) {
                 const uiScene = this.scene.get('UIScene');
                 const joyInput = uiScene?.getJoystickInput?.() || { active: false, dx: 0, dy: 0 };
-                this.activePlayer.tryDodge(this.cursors, this.wasd, joyInput);
+                if (this.activePlayer.tryDodge(this.cursors, this.wasd, joyInput)) {
+                    AudioManager.playSFX('sfx_dodge');
+                }
             }
         }
 
@@ -661,12 +953,25 @@ class GameScene extends Phaser.Scene {
         if (Phaser.Input.Keyboard.JustDown(this.skillKeys.TWO)) this.switchCharacter(1);
         if (Phaser.Input.Keyboard.JustDown(this.skillKeys.THREE)) this.switchCharacter(2);
 
+        // Portal guide arrow: point toward exit portal
+        if (this.portalGuideArrow && this.exitPortal && this.activePlayer) {
+            const dx = this.exitPortal.x - this.activePlayer.x;
+            const dy = this.exitPortal.y - this.activePlayer.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) - Math.PI / 2;
+            this.portalGuideArrow.setPosition(this.activePlayer.x, this.activePlayer.y - 40);
+            this.portalGuideArrow.setRotation(angle);
+            this.portalGuideArrow.setAlpha(dist < 80 ? 0 : 1);
+        }
+
         // Time limit check
         const timeSec = Math.floor(this.elapsedTime / 1000);
         if (timeSec >= this.stageData.timeLimit && !this.isCleared) {
             this.checkGameOver();
         }
     }
+
+    // ===== Skills =====
 
     tryUseSkill(skillSlot) {
         if (!this.activePlayer || this.activePlayer.isDead) return;
@@ -676,16 +981,13 @@ class GameScene extends Phaser.Scene {
             this.effects.skillActivation(this.activePlayer.x, this.activePlayer.y, this.activePlayer.attribute);
             const activeEnemies = this.enemyPool.getActiveEnemies();
 
-            // Support skills (medic/tank heal/shield)
             const charData = this.activePlayer.charData;
             if (charData.type === 'medic' && skillSlot === 'skill1') {
-                // Heal active character 20% (+ heal boost passive)
                 const healBoost = 1 + (this.activePlayer.passiveData?.healBoost || 0);
                 this.activePlayer.heal(Math.floor(this.activePlayer.maxHp * 0.2 * healBoost));
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'HEAL', false);
                 this.effects.healEffect(this.activePlayer.x, this.activePlayer.y);
             } else if (charData.type === 'medic' && skillSlot === 'skill2') {
-                // Regen field: heal all 2% per second for 30 seconds (+ heal boost passive)
                 const healBoost = 1 + (this.activePlayer.passiveData?.healBoost || 0);
                 this.time.addEvent({
                     delay: 1000, repeat: 29, callback: () => {
@@ -701,7 +1003,6 @@ class GameScene extends Phaser.Scene {
                     }
                 });
             } else if (charData.type === 'tank' && skillSlot === 'skill1') {
-                // Fortress Shot: ATK×150% + DEF+20% for 5s
                 this.activePlayer.useSkill(skillSlot, activeEnemies, this.playerBullets);
                 const defBonus = Math.floor(this.activePlayer.def * 0.2);
                 this.activePlayer.def += defBonus;
@@ -711,13 +1012,11 @@ class GameScene extends Phaser.Scene {
                 this.time.delayedCall(5000, () => { this.activePlayer.def -= defBonus; });
                 return;
             } else if (charData.type === 'tank' && skillSlot === 'skill2') {
-                // Shield +300 + damage reduction 3s
                 this.shieldSystem.heal(300);
                 this.showDamageNumber(this.activePlayer.x, this.activePlayer.y - 30, 'SHIELD', false);
                 this.effects.buffPulse(this.activePlayer.x, this.activePlayer.y, 0x44ccff);
                 this.activePlayer.addStatusEffect('shield_up', 3000, '◆', '#44ccff');
             } else if (charData.type === 'support' && skillSlot === 'skill2') {
-                // ATK +25% buff for 8 seconds
                 this.players.forEach(p => {
                     if (!p.isDead) {
                         const bonus = Math.floor(p.atk * 0.25);
@@ -729,7 +1028,6 @@ class GameScene extends Phaser.Scene {
                     }
                 });
             } else {
-                // Damage skills
                 this.activePlayer.useSkill(skillSlot, activeEnemies, this.playerBullets);
             }
         }
@@ -741,13 +1039,11 @@ class GameScene extends Phaser.Scene {
         if (this.skillSystem.useUlt(charId)) {
             const activeEnemies = this.enemyPool.getActiveEnemies();
 
-            // ULT effects
             AudioManager.playSFX('sfx_ult');
             this.cameras.main.flash(300, 255, 200, 50);
             this.cameras.main.shake(200, 0.005);
             this.effects.ultActivation(this.activePlayer.x, this.activePlayer.y, this.activePlayer.attribute);
 
-            // Show ULT name
             const ultData = this.skillSystem.ultGauge[charId];
             const ultName = ultData?.ultName || 'ULT';
             const ultText = this.add.text(
@@ -768,15 +1064,23 @@ class GameScene extends Phaser.Scene {
                 onComplete: () => ultText.destroy()
             });
 
-            // Execute ULT attack
             this.activePlayer.useUlt(activeEnemies, this.playerBullets);
         }
     }
 
+    // ===== Cleanup =====
+
     cleanup() {
         EventsCenter.off(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
+        EventsCenter.off(GameEvents.AREA_CLEARED, this.onAreaCleared, this);
         EventsCenter.off(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
         EventsCenter.off(GameEvents.BOSS_BREAK, this.onBossBreak, this);
         EventsCenter.off(GameEvents.BOSS_PHASE_CHANGE, this.onBossPhaseChange, this);
+        this.destroyExitPortal();
+        this.areaSplashObjects.forEach(obj => { if (obj && obj.destroy) obj.destroy(); });
+        this.areaSplashObjects = [];
+        // Obstacle cleanup is handled by Phaser's scene shutdown;
+        // manually clearing during shutdown can cause body.size errors
+        // on already-destroyed physics bodies
     }
 }

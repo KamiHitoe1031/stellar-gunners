@@ -8,6 +8,7 @@ class UIScene extends Phaser.Scene {
         this.stageData = data.stageData;
         this.shieldSystem = data.shieldSystem;
         this.skillSystem = data.skillSystem;
+        this.statusHudObjects = [];
     }
 
     create() {
@@ -88,6 +89,7 @@ class UIScene extends Phaser.Scene {
         EventsCenter.on(GameEvents.SHIELD_CHANGED, this.onShieldChanged, this);
         EventsCenter.on(GameEvents.CHAR_SWITCHED, this.onCharSwitched, this);
         EventsCenter.on(GameEvents.WAVE_STARTED, this.onWaveStarted, this);
+        EventsCenter.on(GameEvents.AREA_STARTED, this.onAreaStarted, this);
         EventsCenter.on(GameEvents.BOSS_SPAWNED, this.onBossSpawned, this);
         EventsCenter.on(GameEvents.BREAK_CHANGED, this.onBreakChanged, this);
 
@@ -121,7 +123,17 @@ class UIScene extends Phaser.Scene {
     }
 
     onWaveStarted(data) {
-        this.waveInfoText.setText(`Wave ${data.waveIndex + 1}/${data.totalWaves}`);
+        if (data.totalAreas > 1) {
+            this.waveInfoText.setText(`Area ${data.areaIndex + 1}/${data.totalAreas} - Wave ${data.waveIndex + 1}/${data.totalWaves}`);
+        } else {
+            this.waveInfoText.setText(`Wave ${data.waveIndex + 1}/${data.totalWaves}`);
+        }
+    }
+
+    onAreaStarted(data) {
+        if (data.totalAreas > 1) {
+            this.waveInfoText.setText(`Area ${data.areaIndex + 1}/${data.totalAreas}`);
+        }
     }
 
     onBossSpawned(data) {
@@ -177,6 +189,9 @@ class UIScene extends Phaser.Scene {
                 this.dodgeLabel.setColor('#88ccff');
             }
         }
+
+        // Update status effects HUD
+        this.updateStatusEffectsHUD(gameScene);
 
         // Update boss HP
         if (this.bossHUD.visible && gameScene?.enemyPool?.activeBoss) {
@@ -306,11 +321,81 @@ class UIScene extends Phaser.Scene {
         return 'icon_skill_buff';
     }
 
+    updateStatusEffectsHUD(gameScene) {
+        // Clear previous HUD objects
+        this.statusHudObjects.forEach(o => { if (o && o.destroy) o.destroy(); });
+        this.statusHudObjects = [];
+
+        if (!gameScene?.activePlayer) return;
+        const effects = gameScene.activePlayer.statusEffects;
+        if (!effects || effects.length === 0) return;
+
+        const baseX = 10;
+        const baseY = GAME_HEIGHT - 85;
+
+        effects.forEach((effect, i) => {
+            const y = baseY - i * 28;
+            const barW = 60;
+            const ratio = effect.remaining / effect.duration;
+
+            // Icon
+            const icon = this.add.text(baseX, y, effect.icon, {
+                fontSize: '14px', fontFamily: 'Arial', color: effect.color,
+                stroke: '#000000', strokeThickness: 2
+            }).setScrollFactor(0).setDepth(210);
+            this.statusHudObjects.push(icon);
+
+            // Name
+            const nameMap = { poison: '毒', burn: '火傷', slow: '減速', stun: 'スタン' };
+            const name = this.add.text(baseX + 20, y, nameMap[effect.name] || effect.name, {
+                fontSize: '10px', fontFamily: 'Arial', color: effect.color,
+                stroke: '#000000', strokeThickness: 1
+            }).setScrollFactor(0).setDepth(210);
+            this.statusHudObjects.push(name);
+
+            // Duration bar background
+            const barBg = this.add.rectangle(baseX + 20, y + 14, barW, 4, 0x222233)
+                .setOrigin(0, 0.5).setScrollFactor(0).setDepth(210);
+            this.statusHudObjects.push(barBg);
+
+            // Duration bar fill
+            const colorInt = parseInt(effect.color.replace('#', ''), 16);
+            const barFill = this.add.rectangle(baseX + 20, y + 14, barW * ratio, 4, colorInt)
+                .setOrigin(0, 0.5).setScrollFactor(0).setDepth(211);
+            this.statusHudObjects.push(barFill);
+
+            // Time remaining
+            const secs = Math.ceil(effect.remaining / 1000);
+            const timeText = this.add.text(baseX + 20 + barW + 4, y + 6, `${secs}s`, {
+                fontSize: '9px', fontFamily: 'Arial', color: '#aaaaaa',
+                stroke: '#000000', strokeThickness: 1
+            }).setScrollFactor(0).setDepth(210);
+            this.statusHudObjects.push(timeText);
+        });
+
+        // Apply visual tint to player based on status
+        const player = gameScene.activePlayer;
+        if (player.hasStatusEffect('poison')) {
+            player.setTint(0xaa66ff);
+        } else if (player.hasStatusEffect('burn')) {
+            player.setTint(0xff8844);
+        } else if (player.hasStatusEffect('stun')) {
+            player.setTint(0xffff44);
+        } else if (player.hasStatusEffect('slow')) {
+            player.setTint(0x44ff88);
+        } else {
+            player.clearTint();
+        }
+    }
+
     cleanup() {
+        this.statusHudObjects.forEach(o => { if (o && o.destroy) o.destroy(); });
+        this.statusHudObjects = [];
         EventsCenter.off(GameEvents.HP_CHANGED, this.onHpChanged, this);
         EventsCenter.off(GameEvents.SHIELD_CHANGED, this.onShieldChanged, this);
         EventsCenter.off(GameEvents.CHAR_SWITCHED, this.onCharSwitched, this);
         EventsCenter.off(GameEvents.WAVE_STARTED, this.onWaveStarted, this);
+        EventsCenter.off(GameEvents.AREA_STARTED, this.onAreaStarted, this);
         EventsCenter.off(GameEvents.BOSS_SPAWNED, this.onBossSpawned, this);
         EventsCenter.off(GameEvents.BREAK_CHANGED, this.onBreakChanged, this);
         this.partyHUD.cleanup();

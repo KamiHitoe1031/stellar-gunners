@@ -136,6 +136,7 @@ class SaveManager {
         save.player.credits -= cost;
         charSave.level += 1;
         this.save(save);
+        AudioManager.playSFX('sfx_levelup');
         return { success: true, newLevel: charSave.level, creditsSpent: cost };
     }
 

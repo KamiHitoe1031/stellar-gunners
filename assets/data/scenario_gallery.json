@@ -86,5 +86,93 @@
     "category": "main_story",
     "sortOrder": 12,
     "description": "都市廃墟のボス撃破。始まりの勝利。"
+  },
+  {
+    "galleryId": "gal_chr_01",
+    "scenarioId": "scenario_chr_01",
+    "title": "レイナの過去",
+    "chapter": 0,
+    "unlockCondition": "chr_01_bond_5",
+    "thumbnailKey": "thumb_chr_01",
+    "category": "character",
+    "sortOrder": 1,
+    "description": "元軍人としての誇り。彼女が銃を握る理由。"
+  },
+  {
+    "galleryId": "gal_chr_02",
+    "scenarioId": "scenario_chr_02",
+    "title": "セレナの願い",
+    "chapter": 0,
+    "unlockCondition": "chr_02_bond_5",
+    "thumbnailKey": "thumb_chr_02",
+    "category": "character",
+    "sortOrder": 2,
+    "description": "衛生兵として仲間を守ること。それが彼女の全て。"
+  },
+  {
+    "galleryId": "gal_chr_03",
+    "scenarioId": "scenario_chr_03",
+    "title": "カイラの秘密",
+    "chapter": 0,
+    "unlockCondition": "chr_03_bond_5",
+    "thumbnailKey": "thumb_chr_03",
+    "category": "character",
+    "sortOrder": 3,
+    "description": "賞金稼ぎの裏の顔。彼女が追う真実。"
+  },
+  {
+    "galleryId": "gal_chr_04",
+    "scenarioId": "scenario_chr_04",
+    "title": "ノワールの影",
+    "chapter": 0,
+    "unlockCondition": "chr_04_bond_5",
+    "thumbnailKey": "thumb_chr_04",
+    "category": "character",
+    "sortOrder": 4,
+    "description": "暗殺者として生きた過去。その先に見た光。"
+  },
+  {
+    "galleryId": "gal_chr_05",
+    "scenarioId": "scenario_chr_05",
+    "title": "ミラの研究",
+    "chapter": 0,
+    "unlockCondition": "chr_05_bond_5",
+    "thumbnailKey": "thumb_chr_05",
+    "category": "character",
+    "sortOrder": 5,
+    "description": "天才科学者の孤独。虚晶体の謎に挑む。"
+  },
+  {
+    "galleryId": "gal_chr_06",
+    "scenarioId": "scenario_chr_06",
+    "title": "リリスの炎",
+    "chapter": 0,
+    "unlockCondition": "chr_06_bond_5",
+    "thumbnailKey": "thumb_chr_06",
+    "category": "character",
+    "sortOrder": 6,
+    "description": "破壊の力を持つ少女。制御と解放の狭間で。"
+  },
+  {
+    "galleryId": "gal_evt_01",
+    "scenarioId": "scenario_evt_01",
+    "title": "星降る夜のカフェ",
+    "chapter": 0,
+    "unlockCondition": "event_cafe",
+    "thumbnailKey": "thumb_evt_01",
+    "category": "event",
+    "sortOrder": 1,
+    "description": "束の間の休息。部隊メンバーで過ごすカフェの夜。"
+  },
+  {
+    "galleryId": "gal_evt_02",
+    "scenarioId": "scenario_evt_02",
+    "title": "模擬戦闘演習",
+    "chapter": 0,
+    "unlockCondition": "event_training",
+    "thumbnailKey": "thumb_evt_02",
+    "category": "event",
+    "sortOrder": 2,
+    "description": "チーム対抗の訓練。意外な一面が見えてくる。"
   }
 ]

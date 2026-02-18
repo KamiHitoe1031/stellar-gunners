@@ -65,15 +65,30 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             this.weaponConfig.reloadTime = Math.floor(this.weaponConfig.reloadTime * (1 - this.passiveData.reloadReduction));
         }
 
+        // Animation state
+        this.animState = 'idle';
+        this.spriteKey = charData.spriteKey;
+
         this.setCollideWorldBounds(true);
         this.setDisplaySize(48, 48);
         this.body.setSize(28, 28);
         this.setDepth(50);
 
+        // Start idle animation
+        this.playAnim('idle');
+
         this.nameLabel = scene.add.text(x, y - 24, charData.name.split('・')[0], {
             fontSize: '11px', fontFamily: 'Arial', color: '#ffffff',
             stroke: '#000000', strokeThickness: 2
         }).setOrigin(0.5).setDepth(51);
+    }
+
+    playAnim(state) {
+        const animKey = `${this.spriteKey}_${state}`;
+        if (this.scene.anims.exists(animKey) && this.animState !== state) {
+            this.animState = state;
+            this.play(animKey, true);
+        }
     }
 
     setAsActive(active) {
@@ -84,6 +99,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
     takeDamage(amount) {
         if (this.isDead) return;
+        AudioManager.playSFX('sfx_hit');
         this.currentHp = Math.max(0, this.currentHp - amount);
         EventsCenter.emit(GameEvents.HP_CHANGED, {
             charId: this.charId,
@@ -92,8 +108,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         });
         if (this.currentHp <= 0) {
             this.isDead = true;
-            this.setAlpha(0.2);
+            this.playAnim('death');
+            this.once('animationcomplete', () => {
+                this.setAlpha(0.2);
+            });
             this.setActive(false);
+        } else {
+            // Brief hit animation
+            this.playAnim('hit');
+            this.scene.time.delayedCall(150, () => {
+                if (!this.isDead && this.animState === 'hit') {
+                    this.animState = ''; // allow next anim
+                }
+            });
         }
     }
 
@@ -177,6 +204,15 @@ class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.setVelocity(vx * this.spd * speedMult, vy * this.spd * speedMult);
         this.nameLabel.setPosition(this.x, this.y - 24);
+
+        // Animation state: walk if moving, idle if not
+        const isMoving = Math.abs(vx) > 0.01 || Math.abs(vy) > 0.01;
+        if (this.animState !== 'fire' && this.animState !== 'hit') {
+            this.playAnim(isMoving ? 'walk' : 'idle');
+        }
+        // Flip sprite based on movement direction
+        if (vx < -0.01) this.setFlipX(true);
+        else if (vx > 0.01) this.setFlipX(false);
     }
 
     tryDodge(cursors, wasd, joyInput) {
@@ -323,6 +359,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.scene.effects) {
             this.scene.effects.muzzleFlash(this.x, this.y, baseAngle);
         }
+        AudioManager.playSFX('sfx_shoot');
+
+        // Fire animation (brief, then revert)
+        this.playAnim('fire');
+        this.once('animationcomplete', () => {
+            if (this.animState === 'fire') this.animState = ''; // allow next playAnim
+        });
     }
 
     useSkill(skillSlot, enemies, bulletPool) {

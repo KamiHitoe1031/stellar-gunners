@@ -233,8 +233,9 @@ class FormationScene extends Phaser.Scene {
 
         const weaponsData = this.cache.json.get('weapons');
         const modulesData = this.cache.json.get('modules');
-        // Cache parts data for EquipmentSystem
+        // Cache data for EquipmentSystem
         window._cachedPartsData = this.cache.json.get('weapon_parts') || [];
+        window._cachedCharacters = this.characters;
 
         const partyData = this.selectedParty.map(id => {
             const charBase = this.characters.find(c => c.id === id);

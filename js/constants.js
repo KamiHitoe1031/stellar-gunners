@@ -71,3 +71,30 @@ const DODGE_COOLDOWN = 3000;        // ms
 const DODGE_DURATION = 300;         // ms of invincibility
 const DODGE_SPEED_MULT = 3.0;      // speed multiplier during dodge
 const DODGE_DISTANCE = 120;         // pixels traveled
+
+// Area system
+const AREA_TRANSITION_DELAY = 2000;   // ms after area clear before portal
+const AREA_TRANSITION_FADE = 800;     // ms for fade in/out
+
+// Obstacle types
+const OBSTACLE_TYPES = {
+    wall:      { width: 64, height: 16, destructible: false },
+    barricade: { width: 48, height: 12, destructible: true, hp: 300 },
+    pillar:    { width: 24, height: 24, destructible: false },
+    crate:     { width: 32, height: 32, destructible: true, hp: 150 }
+};
+
+// Area layout templates
+const AREA_LAYOUTS = {
+    open:     { count: 0,  types: [] },
+    sparse:   { count: 4,  types: ['crate', 'barricade'] },
+    moderate: { count: 8,  types: ['wall', 'barricade', 'pillar'] },
+    corridor: { count: 12, types: ['wall', 'wall', 'pillar'] },
+    pillars:  { count: 6,  types: ['pillar'] },
+    arena:    { count: 4,  types: ['pillar', 'pillar'] },
+    bunker:   { count: 10, types: ['wall', 'barricade', 'crate'] }
+};
+
+// Animation frame counts and speeds
+const ANIM_FRAMES = { idle: 3, walk: 4, fire: 2, hit: 1, death: 3 };
+const ANIM_FPS = { idle: 4, walk: 8, fire: 12, hit: 10, death: 6 };

@@ -34,6 +34,93 @@ ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:gen
 DELAY_BETWEEN_REQUESTS = 5  # seconds
 
 
+def generate_image_with_refs(prompt, ref_images, output_path, retry=2):
+    """Generate an image using Gemini API with reference images as multimodal input."""
+    headers = {
+        "x-goog-api-key": API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    parts = [{"text": prompt}]
+    for img_path in ref_images:
+        with open(img_path, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        parts.append({
+            "inlineData": {
+                "mimeType": "image/png",
+                "data": img_b64
+            }
+        })
+
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseModalities": ["TEXT", "IMAGE"],
+        },
+    }
+
+    for attempt in range(retry + 1):
+        try:
+            print(f"  Generating with {len(ref_images)} refs: {Path(output_path).name} (attempt {attempt+1})...")
+            response = requests.post(ENDPOINT, headers=headers, json=payload, timeout=300)
+
+            if response.status_code == 429:
+                print(f"  Rate limited. Waiting 60s...")
+                time.sleep(60)
+                continue
+
+            response.raise_for_status()
+            result = response.json()
+
+            candidates = result.get("candidates", [])
+            if not candidates:
+                print(f"  WARNING: No candidates. Response: {json.dumps(result, indent=2)[:500]}")
+                if attempt < retry:
+                    time.sleep(10)
+                    continue
+                return None
+
+            parts_resp = candidates[0].get("content", {}).get("parts", [])
+            image_data = None
+            text_response = ""
+
+            for part in parts_resp:
+                if "inlineData" in part:
+                    image_data = part["inlineData"]["data"]
+                elif "inline_data" in part:
+                    image_data = part["inline_data"]["data"]
+                elif "text" in part:
+                    text_response = part["text"]
+
+            if image_data is None:
+                print(f"  WARNING: No image in response. Text: {text_response[:200]}")
+                if attempt < retry:
+                    time.sleep(10)
+                    continue
+                return None
+
+            image_bytes = base64.b64decode(image_data)
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "wb") as f:
+                f.write(image_bytes)
+
+            size_kb = len(image_bytes) / 1024
+            print(f"  OK: {Path(output_path).name} ({size_kb:.0f} KB)")
+            if text_response:
+                print(f"  Model note: {text_response[:100]}")
+            return output_path
+
+        except requests.exceptions.Timeout:
+            print(f"  Timeout. Retrying...")
+            time.sleep(10)
+        except Exception as e:
+            print(f"  Error: {e}")
+            if attempt < retry:
+                time.sleep(10)
+
+    return None
+
+
 def generate_image(prompt, output_path, aspect_ratio="2:3", image_size="1K", retry=2):
     """Generate an image using Gemini API and save to file."""
     headers = {
@@ -472,6 +559,75 @@ def gen_backgrounds():
         time.sleep(DELAY_BETWEEN_REQUESTS)
 
 
+def gen_key_visual():
+    """Generate key visual and title logo using character portraits as reference."""
+    print("\n=== Generating Key Visual & Title Logo ===\n")
+
+    # Collect reference portraits (one per character)
+    portrait_map = {
+        "chr_01": "confident",
+        "chr_02": "calm",
+        "chr_03": "confident",
+        "chr_04": "cool",
+        "chr_05": "cheerful",
+        "chr_06": "focused",
+    }
+    ref_images = []
+    portrait_dir = ASSETS_DIR / "portraits"
+    for char_key, expr in portrait_map.items():
+        path = portrait_dir / f"{char_key}_{expr}.png"
+        if path.exists():
+            ref_images.append(str(path))
+            print(f"  Ref: {path.name}")
+        else:
+            print(f"  WARNING: Missing ref {path.name}")
+
+    if len(ref_images) < 3:
+        print("  ERROR: Need at least 3 reference portraits. Aborting.")
+        return
+
+    # --- Key Visual ---
+    kv_output = PROJECT_ROOT / "assets" / "images" / "key_visual.png"
+    kv_prompt = (
+        "Create an epic anime key visual / promotional illustration for a sci-fi "
+        "military shooting game called 'STELLAR GUNNERS'. "
+        "These attached images show the 6 playable characters of the game. "
+        "Reference their exact designs, outfits, hair colors, and weapons. "
+        "Create a NEW dramatic group illustration with ALL 6 characters in dynamic "
+        "battle action poses, weapons drawn, facing the viewer as a team. "
+        "Arrangement: center character (red-haired girl with assault rifle) in front, "
+        "others flanking in V-formation. "
+        "Background: dramatic ruined sci-fi cityscape at dusk, glowing energy beams "
+        "in the sky, floating debris, atmospheric orange-blue lighting. "
+        "Style: high quality anime promotional art, vibrant saturated colors, "
+        "dramatic cinematic lighting from behind, action movie poster composition. "
+        "Landscape orientation (16:9 aspect ratio), full body shots. "
+        "DO NOT include any text, title, or logos in the image - characters and "
+        "background only."
+    )
+    print("\n  --- Key Visual ---")
+    generate_image_with_refs(kv_prompt, ref_images, str(kv_output), retry=2)
+    time.sleep(DELAY_BETWEEN_REQUESTS)
+
+    # --- Title Logo ---
+    logo_output = PROJECT_ROOT / "assets" / "images" / "title_logo.png"
+    logo_prompt = (
+        "Create a stylish sci-fi video game title logo image. "
+        "Main text: 'STELLAR GUNNERS' in bold futuristic military-style font. "
+        "The letters should have: metallic silver-blue base color, bright cyan/blue "
+        "energy glow effects around edges, subtle circuit-board texture within letters, "
+        "thin neon blue accent lines extending from letter edges. "
+        "Below the main title in smaller elegant text: 'ステラガンナーズ' (Japanese subtitle) "
+        "in clean white with subtle blue glow. "
+        "Background: solid very dark navy (#050515) or transparent. "
+        "Style: professional game logo design, sharp clean edges, premium quality. "
+        "The logo should look like it belongs on a AAA anime game title screen. "
+        "Landscape orientation. Text only, no characters or illustrations."
+    )
+    print("\n  --- Title Logo ---")
+    generate_image(logo_prompt, str(logo_output))
+
+
 # ============================================================
 # Main
 # ============================================================
@@ -495,12 +651,15 @@ def main():
             gen_enemies()
         elif task == "backgrounds":
             gen_backgrounds()
+        elif task == "keyvisual":
+            gen_key_visual()
         elif task == "all":
             gen_portraits()
             gen_sprites()
             gen_face_icons()
             gen_enemies()
             gen_backgrounds()
+            gen_key_visual()
         elif task == "test":
             # Quick test: generate one portrait
             prompt = build_portrait_prompt("chr_01", "confident")

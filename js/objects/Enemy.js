@@ -31,6 +31,8 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.bulletCount = enemyData.bulletCount || 1;
         this.isDead = false;
         this.fireTimer = 1000 + Math.random() * 2000;
+        this.animState = 'idle';
+        this.spriteKey = enemyData.spriteKey;
 
         this.setActive(true);
         this.setVisible(true);
@@ -54,6 +56,18 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         }
         this.hpBar.setVisible(true);
         this.hpBar.setPercent(1);
+
+        // Start idle animation
+        this.playEnemyAnim('idle');
+    }
+
+    playEnemyAnim(state) {
+        if (!this.spriteKey) return;
+        const animKey = `${this.spriteKey}_${state}`;
+        if (this.scene && this.scene.anims.exists(animKey) && this.animState !== state) {
+            this.animState = state;
+            this.play(animKey, true);
+        }
     }
 
     takeDamage(damage) {
@@ -63,26 +77,39 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
             this.hpBar.setPercent(this.currentHp / this.maxHp);
         }
 
-        this.scene.tweens.add({
-            targets: this,
-            alpha: 0.5,
-            duration: 50,
-            yoyo: true
-        });
-
         if (this.currentHp <= 0) {
             this.die();
             return true;
         }
+
+        // Hit animation
+        this.playEnemyAnim('hit');
+        this.scene.time.delayedCall(120, () => {
+            if (!this.isDead && this.animState === 'hit') {
+                this.animState = ''; // allow next anim
+            }
+        });
         return false;
     }
 
     die() {
         this.isDead = true;
-        this.setActive(false);
-        this.setVisible(false);
         if (this.body) this.body.enable = false;
         if (this.hpBar) this.hpBar.setVisible(false);
+
+        // Play death animation then deactivate
+        this.playEnemyAnim('death');
+        this.once('animationcomplete', () => {
+            this.setActive(false);
+            this.setVisible(false);
+        });
+        // Fallback timeout in case anim doesn't fire
+        this.scene.time.delayedCall(500, () => {
+            if (this.isDead) {
+                this.setActive(false);
+                this.setVisible(false);
+            }
+        });
     }
 
     updateAI(player, bulletPool, delta) {
@@ -149,6 +176,7 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     doStationarySnipe(player, bulletPool, delta) {
         this.setVelocity(0, 0);
+        if (this.animState !== 'hit' && this.animState !== 'death') this.playEnemyAnim('idle');
         this.fireTimer -= delta;
         if (this.fireTimer <= 0) {
             this.shootAt(player, bulletPool);
@@ -187,11 +215,17 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     doSupportHeal(delta) {
         this.setVelocity(0, 0);
+        if (this.animState !== 'hit' && this.animState !== 'death') this.playEnemyAnim('idle');
     }
 
     moveToward(target, speed) {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
         this.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+        if (this.animState !== 'hit' && this.animState !== 'death') {
+            this.playEnemyAnim('walk');
+        }
+        // Flip based on direction
+        this.setFlipX(Math.cos(angle) < 0);
     }
 
     shootAt(player, bulletPool) {

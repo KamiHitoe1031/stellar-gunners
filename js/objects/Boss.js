@@ -81,9 +81,11 @@ class Boss extends Enemy {
             this.breakTimer -= delta;
             this.setVelocity(0, 0);
             this.setTint(0xffff00);
+            if (this.animState !== 'hit') this.playEnemyAnim('hit');
             if (this.breakTimer <= 0) {
                 this.breakSystem.endBreak();
                 this.clearTint();
+                this.animState = ''; // allow next anim
             }
             return;
         }

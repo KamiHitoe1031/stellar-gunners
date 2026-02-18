@@ -13,13 +13,19 @@
     "wave2": "enemy_drone_01:3,enemy_soldier_01:2",
     "wave3": "",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city", "layout": "sparse", "waves": ["enemy_drone_01:4", "enemy_drone_01:3,enemy_soldier_01:2"], "areaName": "廃墟外縁" },
+      { "bgTheme": "city_interior", "layout": "moderate", "waves": ["enemy_soldier_01:3,enemy_drone_01:2", "enemy_drone_01:4,enemy_soldier_01:3"], "areaName": "廃ビル内部" }
+    ],
     "dropCreditsMin": 50,
     "dropCreditsMax": 100,
     "dropExpChance": 0.3,
     "dropWeaponChance": 0.05,
     "firstClearGems": 30,
     "firstClearItems": "exp_s:3",
-    "scenarioId": "scenario_1_1"
+    "scenarioId": "scenario_1_1",
+    "baseXP": 50,
+    "baseCreditReward": 100
   },
   {
     "id": "stage_1_2",
@@ -30,18 +36,25 @@
     "staminaCost": 6,
     "recommendedPower": 600,
     "recommendedAttribute": "bio",
-    "timeLimit": 180,
+    "timeLimit": 200,
     "wave1": "enemy_drone_01:6",
     "wave2": "enemy_soldier_01:4",
     "wave3": "enemy_drone_01:4,enemy_soldier_01:2",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city", "layout": "sparse", "waves": ["enemy_drone_01:4", "enemy_drone_01:3,enemy_soldier_01:2"], "areaName": "市街地入口" },
+      { "bgTheme": "city_interior", "layout": "moderate", "waves": ["enemy_soldier_01:4", "enemy_drone_01:2,enemy_soldier_01:2"], "areaName": "廃墟通路" },
+      { "bgTheme": "city_ruins", "layout": "bunker", "waves": ["enemy_drone_01:4,enemy_soldier_01:2", "enemy_soldier_01:4,enemy_drone_01:3"], "areaName": "崩落区画" }
+    ],
     "dropCreditsMin": 60,
     "dropCreditsMax": 120,
     "dropExpChance": 0.35,
     "dropWeaponChance": 0.05,
     "firstClearGems": 30,
     "firstClearItems": "exp_s:3",
-    "scenarioId": "scenario_1_2"
+    "scenarioId": "scenario_1_2",
+    "baseXP": 55,
+    "baseCreditReward": 110
   },
   {
     "id": "stage_1_3",
@@ -52,18 +65,25 @@
     "staminaCost": 6,
     "recommendedPower": 700,
     "recommendedAttribute": "bio",
-    "timeLimit": 200,
+    "timeLimit": 220,
     "wave1": "enemy_soldier_01:5",
     "wave2": "enemy_soldier_01:3,enemy_drone_02:2",
     "wave3": "enemy_soldier_02:2,enemy_drone_01:4",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city", "layout": "moderate", "waves": ["enemy_soldier_01:4", "enemy_soldier_01:3,enemy_drone_01:2"], "areaName": "前線付近" },
+      { "bgTheme": "city_interior", "layout": "corridor", "waves": ["enemy_soldier_01:3,enemy_drone_02:2", "enemy_drone_02:3,enemy_soldier_01:2"], "areaName": "建物内通路" },
+      { "bgTheme": "city_ruins", "layout": "bunker", "waves": ["enemy_soldier_02:2,enemy_drone_01:4", "enemy_soldier_01:3,enemy_soldier_02:2"], "areaName": "拠点制圧地点" }
+    ],
     "dropCreditsMin": 70,
     "dropCreditsMax": 140,
     "dropExpChance": 0.4,
     "dropWeaponChance": 0.08,
     "firstClearGems": 30,
     "firstClearItems": "exp_s:5",
-    "scenarioId": "scenario_1_3"
+    "scenarioId": "scenario_1_3",
+    "baseXP": 60,
+    "baseCreditReward": 120
   },
   {
     "id": "stage_1_4",
@@ -74,18 +94,25 @@
     "staminaCost": 6,
     "recommendedPower": 750,
     "recommendedAttribute": "machine",
-    "timeLimit": 200,
+    "timeLimit": 220,
     "wave1": "enemy_swarm_01:10",
     "wave2": "enemy_soldier_01:4,enemy_healer_01:1",
     "wave3": "enemy_swarm_01:8,enemy_soldier_01:3",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city_ruins", "layout": "sparse", "waves": ["enemy_swarm_01:6", "enemy_swarm_01:5,enemy_drone_01:2"], "areaName": "通信塔周辺" },
+      { "bgTheme": "city_interior", "layout": "moderate", "waves": ["enemy_soldier_01:4,enemy_healer_01:1", "enemy_soldier_01:3,enemy_drone_01:3"], "areaName": "機器室" },
+      { "bgTheme": "city", "layout": "bunker", "waves": ["enemy_swarm_01:8,enemy_soldier_01:3", "enemy_soldier_01:4,enemy_swarm_01:4"], "areaName": "防衛拠点" }
+    ],
     "dropCreditsMin": 80,
     "dropCreditsMax": 150,
     "dropExpChance": 0.4,
     "dropWeaponChance": 0.08,
     "firstClearGems": 30,
     "firstClearItems": "exp_m:1",
-    "scenarioId": ""
+    "scenarioId": "",
+    "baseXP": 65,
+    "baseCreditReward": 130
   },
   {
     "id": "stage_1_5",
@@ -96,18 +123,25 @@
     "staminaCost": 7,
     "recommendedPower": 800,
     "recommendedAttribute": "machine",
-    "timeLimit": 200,
+    "timeLimit": 240,
     "wave1": "enemy_soldier_01:4,enemy_drone_01:3",
     "wave2": "enemy_soldier_02:2,enemy_sniper_01:2",
     "wave3": "enemy_tank_01:1,enemy_soldier_01:3",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city", "layout": "moderate", "waves": ["enemy_soldier_01:4,enemy_drone_01:3", "enemy_drone_01:4,enemy_soldier_01:3"], "areaName": "補給路入口" },
+      { "bgTheme": "city_ruins", "layout": "corridor", "waves": ["enemy_soldier_02:2,enemy_sniper_01:2", "enemy_soldier_01:3,enemy_drone_02:2", "enemy_sniper_01:2,enemy_soldier_02:2"], "areaName": "瓦礫地帯" },
+      { "bgTheme": "city_interior", "layout": "bunker", "waves": ["enemy_tank_01:1,enemy_soldier_01:3", "enemy_soldier_02:3,enemy_healer_01:1"], "areaName": "補給倉庫" }
+    ],
     "dropCreditsMin": 90,
     "dropCreditsMax": 170,
     "dropExpChance": 0.45,
     "dropWeaponChance": 0.1,
     "firstClearGems": 30,
     "firstClearItems": "exp_m:2",
-    "scenarioId": "scenario_1_5"
+    "scenarioId": "scenario_1_5",
+    "baseXP": 70,
+    "baseCreditReward": 140
   },
   {
     "id": "stage_1_6",
@@ -118,18 +152,25 @@
     "staminaCost": 7,
     "recommendedPower": 850,
     "recommendedAttribute": "corrosion",
-    "timeLimit": 220,
+    "timeLimit": 260,
     "wave1": "enemy_drone_02:5",
     "wave2": "enemy_soldier_01:4,enemy_shield_01:1",
     "wave3": "enemy_soldier_02:3,enemy_sniper_01:2",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city", "layout": "sparse", "waves": ["enemy_drone_02:5", "enemy_drone_02:3,enemy_soldier_01:2"], "areaName": "外縁区域" },
+      { "bgTheme": "underground", "layout": "corridor", "waves": ["enemy_soldier_01:4,enemy_shield_01:1", "enemy_soldier_02:2,enemy_drone_02:3", "enemy_shield_01:1,enemy_soldier_01:4"], "areaName": "地下入口" },
+      { "bgTheme": "underground", "layout": "bunker", "waves": ["enemy_soldier_02:3,enemy_sniper_01:2", "enemy_sniper_01:3,enemy_soldier_02:2,enemy_healer_01:1"], "areaName": "地下通路" }
+    ],
     "dropCreditsMin": 100,
     "dropCreditsMax": 180,
     "dropExpChance": 0.45,
     "dropWeaponChance": 0.1,
     "firstClearGems": 30,
     "firstClearItems": "exp_m:2",
-    "scenarioId": ""
+    "scenarioId": "",
+    "baseXP": 75,
+    "baseCreditReward": 150
   },
   {
     "id": "stage_1_7",
@@ -140,18 +181,25 @@
     "staminaCost": 7,
     "recommendedPower": 900,
     "recommendedAttribute": "corrosion",
-    "timeLimit": 220,
+    "timeLimit": 260,
     "wave1": "enemy_soldier_01:5,enemy_healer_01:1",
     "wave2": "enemy_soldier_02:3,enemy_drone_02:3",
     "wave3": "enemy_tank_01:1,enemy_shield_01:1,enemy_soldier_01:4",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city_ruins", "layout": "moderate", "waves": ["enemy_soldier_01:5,enemy_healer_01:1", "enemy_drone_02:4,enemy_soldier_01:3"], "areaName": "敵拠点外壁" },
+      { "bgTheme": "city_interior", "layout": "corridor", "waves": ["enemy_soldier_02:3,enemy_drone_02:3", "enemy_soldier_01:4,enemy_sniper_01:2", "enemy_shield_01:1,enemy_soldier_02:3"], "areaName": "拠点内部" },
+      { "bgTheme": "lab", "layout": "bunker", "waves": ["enemy_tank_01:1,enemy_shield_01:1,enemy_soldier_01:4", "enemy_soldier_02:4,enemy_healer_01:1,enemy_sniper_01:2"], "areaName": "司令室" }
+    ],
     "dropCreditsMin": 110,
     "dropCreditsMax": 200,
     "dropExpChance": 0.5,
     "dropWeaponChance": 0.1,
     "firstClearGems": 50,
     "firstClearItems": "exp_m:3",
-    "scenarioId": "scenario_1_7"
+    "scenarioId": "scenario_1_7",
+    "baseXP": 80,
+    "baseCreditReward": 160
   },
   {
     "id": "stage_1_8",
@@ -162,18 +210,25 @@
     "staminaCost": 8,
     "recommendedPower": 950,
     "recommendedAttribute": "psychic",
-    "timeLimit": 240,
+    "timeLimit": 280,
     "wave1": "enemy_swarm_01:15",
     "wave2": "enemy_sniper_01:3,enemy_healer_01:2",
     "wave3": "enemy_soldier_02:4,enemy_shield_01:2",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "underground", "layout": "sparse", "waves": ["enemy_swarm_01:8", "enemy_swarm_01:6,enemy_drone_01:3", "enemy_swarm_01:5,enemy_soldier_01:3"], "areaName": "地下通路入口" },
+      { "bgTheme": "underground", "layout": "corridor", "waves": ["enemy_sniper_01:3,enemy_healer_01:2", "enemy_soldier_02:3,enemy_sniper_01:2", "enemy_healer_01:1,enemy_soldier_01:4,enemy_drone_02:2"], "areaName": "地下深部" },
+      { "bgTheme": "lab_corridor", "layout": "bunker", "waves": ["enemy_soldier_02:4,enemy_shield_01:2", "enemy_shield_01:2,enemy_sniper_01:2,enemy_soldier_02:3"], "areaName": "隠し研究区画" }
+    ],
     "dropCreditsMin": 120,
     "dropCreditsMax": 220,
     "dropExpChance": 0.5,
     "dropWeaponChance": 0.12,
     "firstClearGems": 50,
     "firstClearItems": "exp_m:3",
-    "scenarioId": ""
+    "scenarioId": "",
+    "baseXP": 85,
+    "baseCreditReward": 170
   },
   {
     "id": "stage_1_9",
@@ -184,18 +239,25 @@
     "staminaCost": 8,
     "recommendedPower": 1000,
     "recommendedAttribute": "psychic",
-    "timeLimit": 240,
+    "timeLimit": 280,
     "wave1": "enemy_drone_02:4,enemy_soldier_01:4",
     "wave2": "enemy_tank_01:1,enemy_sniper_01:2,enemy_healer_01:1",
     "wave3": "enemy_soldier_02:4,enemy_shield_01:2,enemy_drone_02:3",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "lab", "layout": "moderate", "waves": ["enemy_drone_02:4,enemy_soldier_01:3", "enemy_soldier_01:4,enemy_drone_02:2", "enemy_drone_02:3,enemy_soldier_02:2"], "areaName": "研究施設入口" },
+      { "bgTheme": "lab_corridor", "layout": "corridor", "waves": ["enemy_tank_01:1,enemy_sniper_01:2,enemy_healer_01:1", "enemy_soldier_02:3,enemy_shield_01:1,enemy_drone_02:2", "enemy_sniper_01:3,enemy_soldier_02:2,enemy_healer_01:1"], "areaName": "実験棟通路" },
+      { "bgTheme": "lab", "layout": "bunker", "waves": ["enemy_soldier_02:4,enemy_shield_01:2,enemy_drone_02:3", "enemy_shield_01:2,enemy_soldier_02:4,enemy_sniper_01:2", "enemy_tank_01:1,enemy_soldier_02:3,enemy_healer_01:1"], "areaName": "データ保管室" }
+    ],
     "dropCreditsMin": 130,
     "dropCreditsMax": 240,
     "dropExpChance": 0.55,
     "dropWeaponChance": 0.12,
     "firstClearGems": 50,
     "firstClearItems": "exp_l:1",
-    "scenarioId": "scenario_1_9"
+    "scenarioId": "scenario_1_9",
+    "baseXP": 90,
+    "baseCreditReward": 180
   },
   {
     "id": "stage_1_10",
@@ -206,18 +268,25 @@
     "staminaCost": 8,
     "recommendedPower": 1050,
     "recommendedAttribute": "immunity",
-    "timeLimit": 240,
+    "timeLimit": 280,
     "wave1": "enemy_soldier_01:6,enemy_drone_01:6",
     "wave2": "enemy_tank_01:1,enemy_soldier_02:3,enemy_healer_01:1",
     "wave3": "enemy_shield_01:2,enemy_sniper_01:3,enemy_soldier_02:4",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city", "layout": "moderate", "waves": ["enemy_soldier_01:6,enemy_drone_01:4", "enemy_drone_01:5,enemy_soldier_01:4", "enemy_soldier_01:3,enemy_drone_01:3,enemy_soldier_02:2"], "areaName": "防衛ライン前方" },
+      { "bgTheme": "city_ruins", "layout": "bunker", "waves": ["enemy_tank_01:1,enemy_soldier_02:3,enemy_healer_01:1", "enemy_soldier_02:4,enemy_shield_01:1,enemy_sniper_01:2", "enemy_tank_01:1,enemy_healer_01:1,enemy_soldier_02:3"], "areaName": "廃墟防衛区域" },
+      { "bgTheme": "city_interior", "layout": "corridor", "waves": ["enemy_shield_01:2,enemy_sniper_01:3,enemy_soldier_02:4", "enemy_soldier_02:5,enemy_shield_01:2,enemy_sniper_01:2", "enemy_tank_01:1,enemy_shield_01:2,enemy_soldier_02:4"], "areaName": "最終防衛拠点" }
+    ],
     "dropCreditsMin": 140,
     "dropCreditsMax": 260,
     "dropExpChance": 0.55,
     "dropWeaponChance": 0.15,
     "firstClearGems": 50,
     "firstClearItems": "exp_l:1",
-    "scenarioId": ""
+    "scenarioId": "",
+    "baseXP": 95,
+    "baseCreditReward": 190
   },
   {
     "id": "stage_1_11",
@@ -228,18 +297,26 @@
     "staminaCost": 8,
     "recommendedPower": 1100,
     "recommendedAttribute": "immunity",
-    "timeLimit": 260,
+    "timeLimit": 300,
     "wave1": "enemy_soldier_02:4,enemy_drone_02:4",
     "wave2": "enemy_tank_01:2,enemy_shield_01:1,enemy_healer_01:1",
     "wave3": "enemy_soldier_02:5,enemy_sniper_01:3,enemy_shield_01:2",
     "wave4": "enemy_tank_01:1,enemy_soldier_02:3",
+    "areas": [
+      { "bgTheme": "city_ruins", "layout": "moderate", "waves": ["enemy_soldier_02:4,enemy_drone_02:4", "enemy_drone_02:5,enemy_soldier_02:3", "enemy_soldier_02:3,enemy_drone_02:3,enemy_sniper_01:2"], "areaName": "侵入路" },
+      { "bgTheme": "lab_corridor", "layout": "corridor", "waves": ["enemy_tank_01:2,enemy_shield_01:1,enemy_healer_01:1", "enemy_soldier_02:4,enemy_sniper_01:2,enemy_shield_01:1", "enemy_shield_01:2,enemy_soldier_02:3,enemy_healer_01:1"], "areaName": "研究区画B" },
+      { "bgTheme": "underground", "layout": "bunker", "waves": ["enemy_soldier_02:5,enemy_sniper_01:3,enemy_shield_01:2", "enemy_tank_01:1,enemy_soldier_02:4,enemy_shield_01:2", "enemy_sniper_01:3,enemy_shield_01:2,enemy_soldier_02:4,enemy_healer_01:1"], "areaName": "地下格納庫" },
+      { "bgTheme": "lab", "layout": "arena", "waves": ["enemy_tank_01:1,enemy_soldier_02:3", "enemy_shield_01:2,enemy_soldier_02:4,enemy_sniper_01:2", "enemy_tank_01:2,enemy_healer_01:1,enemy_soldier_02:3"], "areaName": "コア手前" }
+    ],
     "dropCreditsMin": 150,
     "dropCreditsMax": 280,
     "dropExpChance": 0.6,
     "dropWeaponChance": 0.15,
     "firstClearGems": 50,
     "firstClearItems": "exp_l:2",
-    "scenarioId": "scenario_1_11"
+    "scenarioId": "scenario_1_11",
+    "baseXP": 100,
+    "baseCreditReward": 200
   },
   {
     "id": "stage_1_12",
@@ -250,17 +327,24 @@
     "staminaCost": 10,
     "recommendedPower": 1200,
     "recommendedAttribute": "machine",
-    "timeLimit": 300,
+    "timeLimit": 360,
     "wave1": "enemy_drone_01:8",
     "wave2": "enemy_soldier_01:4,enemy_drone_02:4",
     "wave3": "boss_xr07:1",
     "wave4": "",
+    "areas": [
+      { "bgTheme": "city_interior", "layout": "moderate", "waves": ["enemy_drone_01:5,enemy_soldier_01:3", "enemy_drone_01:4,enemy_soldier_01:4,enemy_drone_02:2"], "areaName": "接近ルート" },
+      { "bgTheme": "lab_corridor", "layout": "corridor", "waves": ["enemy_soldier_01:4,enemy_drone_02:4", "enemy_soldier_02:3,enemy_shield_01:1,enemy_sniper_01:2"], "areaName": "防衛区画" },
+      { "bgTheme": "boss_arena", "layout": "pillars", "waves": ["boss_xr07:1"], "areaName": "コア・チェンバー" }
+    ],
     "dropCreditsMin": 200,
     "dropCreditsMax": 400,
     "dropExpChance": 0.8,
     "dropWeaponChance": 0.2,
     "firstClearGems": 100,
     "firstClearItems": "exp_l:3,wpn_r3:1",
-    "scenarioId": "scenario_1_12"
+    "scenarioId": "scenario_1_12",
+    "baseXP": 120,
+    "baseCreditReward": 250
   }
 ]
