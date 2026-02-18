@@ -7,6 +7,9 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
         this.piercing = false;
         this.explosionRadius = 0;
         this.piercedTargets = new Set();
+        // Owner stats for damage calculation
+        this.ownerCritRate = 5;
+        this.ownerCritDmg = 150;
     }
 
     fire(x, y, angle, speed, damage, attribute, isPlayerBullet, options = {}) {
@@ -20,6 +23,8 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
         this.isPlayerBullet = isPlayerBullet;
         this.piercing = options.piercing || false;
         this.explosionRadius = options.explosionRadius || 0;
+        this.ownerCritRate = options.ownerCritRate || 5;
+        this.ownerCritDmg = options.ownerCritDmg || 150;
         this.piercedTargets.clear();
 
         const vx = Math.cos(angle) * speed;

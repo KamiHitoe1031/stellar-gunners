@@ -190,8 +190,8 @@ class GameScene extends Phaser.Scene {
             {
                 atk: bullet.damage,
                 attribute: bullet.attribute,
-                critRate: this.activePlayer?.critRate || 5,
-                critDmg: this.activePlayer?.critDmg || 150,
+                critRate: bullet.ownerCritRate || 5,
+                critDmg: bullet.ownerCritDmg || 150,
                 weaponAtk: 0
             },
             { def: enemy.def, attribute: enemy.attribute }
@@ -596,7 +596,7 @@ class GameScene extends Phaser.Scene {
             const activeEnemies = this.enemyPool.getActiveEnemies();
             this.activePlayer.updateAutoFire(activeEnemies, this.playerBullets, delta);
 
-            // Follow inactive players
+            // Inactive players: follow + auto-fire
             this.players.forEach((p, i) => {
                 if (i !== this.activePlayerIndex && !p.isDead) {
                     const targetX = this.activePlayer.x + (i - this.activePlayerIndex) * 40;
@@ -604,6 +604,8 @@ class GameScene extends Phaser.Scene {
                     p.x += (targetX - p.x) * 0.05;
                     p.y += (targetY - p.y) * 0.05;
                     p.nameLabel.setPosition(p.x, p.y - 24);
+                    // Inactive party members also auto-fire
+                    p.updateAutoFire(activeEnemies, this.playerBullets, delta);
                 }
             });
         }

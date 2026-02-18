@@ -19,136 +19,212 @@ class ResultScene extends Phaser.Scene {
     create() {
         AudioManager.playBGM('bgm_result');
         const cx = GAME_WIDTH / 2;
-        this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0a0a1e);
+        const cy = GAME_HEIGHT / 2;
 
-        // Unlock gallery entries and grant XP on stage clear
+        // Dark background
+        this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x060812);
+
+        // Unlock gallery and grant rewards on victory
         if (!this.isGameOver) {
             this.unlockGallery(this.stageData.id);
-            // Grant battle XP to party members
             this.battleRewards = SaveManager.grantBattleRewards(this.partyIds, this.stageData);
         }
 
-        // Result header
+        // Main panel
+        this.add.image(cx, cy + 20, 'result_panel').setDepth(1);
+
+        // === Header banner ===
+        const headerKey = this.isGameOver ? 'result_header_fail' : 'result_header_clear';
+        this.add.image(cx, 50, headerKey).setDepth(2);
+
         const headerColor = this.isGameOver ? '#ff4444' : '#00ff88';
         const headerText = this.isGameOver ? 'MISSION FAILED' : 'MISSION COMPLETE';
-        this.add.text(cx, 40, headerText, {
-            fontSize: '32px', fontFamily: 'Arial', color: headerColor,
+        const header = this.add.text(cx, 50, headerText, {
+            fontSize: '28px', fontFamily: 'Arial', color: headerColor,
             stroke: '#000000', strokeThickness: 4
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(3);
 
-        // Stage name
-        this.add.text(cx, 80, this.stageData.name, {
-            fontSize: '18px', fontFamily: 'Arial', color: '#aaaaaa'
-        }).setOrigin(0.5);
+        // Fade-in header
+        header.setAlpha(0);
+        this.tweens.add({ targets: header, alpha: 1, duration: 600, delay: 200 });
 
-        // Stars
+        // === Stage name ===
+        this.add.text(cx, 90, this.stageData.name, {
+            fontSize: '15px', fontFamily: 'Arial', color: '#8899aa',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(3);
+
+        // === Stars ===
         if (!this.isGameOver) {
-            const starY = 120;
             for (let i = 0; i < 3; i++) {
                 const filled = i < this.stars;
-                const star = this.add.text(cx - 40 + i * 40, starY, '★', {
-                    fontSize: '36px', fontFamily: 'Arial',
-                    color: filled ? '#ffcc00' : '#333333'
-                }).setOrigin(0.5);
-
+                const starKey = filled ? 'result_star_filled' : 'result_star_empty';
+                const star = this.add.image(cx - 50 + i * 50, 125, starKey).setDepth(3);
                 if (filled) {
                     star.setScale(0);
                     this.tweens.add({
-                        targets: star,
-                        scale: 1,
-                        duration: 400,
-                        delay: i * 300,
+                        targets: star, scale: 1,
+                        duration: 400, delay: 400 + i * 250,
                         ease: 'Back.easeOut'
                     });
                 }
             }
         }
 
-        // Stats
-        const statsY = 170;
+        // === Divider ===
+        this.add.image(cx, 158, 'result_divider').setDepth(2);
+
+        // === Two-column layout: Stats (left) | Drops (right) ===
+        const colLeftX = cx - 170;
+        const colRightX = cx + 130;
+        const contentY = 175;
+
+        // --- Left column: Battle Stats ---
+        this.add.text(colLeftX, contentY, '戦闘統計', {
+            fontSize: '14px', fontFamily: 'Arial', color: '#6688aa',
+            stroke: '#000000', strokeThickness: 1
+        }).setDepth(3);
+
         const min = Math.floor(this.timeInSeconds / 60);
         const sec = this.timeInSeconds % 60;
 
-        this.add.text(cx - 150, statsY, '戦闘統計', {
-            fontSize: '16px', fontFamily: 'Arial', color: '#88aacc'
-        });
-
         const stats = [
-            `クリアタイム: ${min}:${sec.toString().padStart(2, '0')}`,
-            `総ダメージ: ${this.totalDamage.toLocaleString()}`,
-            `戦闘不能: ${this.partyDeaths}名`
+            { icon: 'result_icon_time', text: `${min}:${sec.toString().padStart(2, '0')}`, label: 'クリアタイム' },
+            { icon: 'result_icon_damage', text: this.totalDamage.toLocaleString(), label: '総ダメージ' },
+            { icon: 'result_icon_death', text: `${this.partyDeaths}名`, label: '戦闘不能' }
         ];
 
         if (this.battleRewards) {
-            stats.push(`キャラXP: +${this.battleRewards.xpPerChar}`);
-            stats.push(`クレジット: +${this.battleRewards.creditsReward}`);
+            stats.push({ icon: 'result_icon_xp', text: `+${this.battleRewards.xpPerChar}`, label: 'キャラXP' });
+            stats.push({ icon: 'result_icon_credit', text: `+${this.battleRewards.creditsReward}`, label: 'クレジット' });
         }
 
         stats.forEach((s, i) => {
-            this.add.text(cx - 150, statsY + 25 + i * 22, s, {
-                fontSize: '13px', fontFamily: 'Arial', color: '#cccccc'
-            });
+            const y = contentY + 25 + i * 28;
+            this.add.image(colLeftX + 6, y + 3, s.icon).setDepth(3);
+            this.add.text(colLeftX + 22, y - 4, s.label, {
+                fontSize: '10px', fontFamily: 'Arial', color: '#667788'
+            }).setDepth(3);
+            this.add.text(colLeftX + 22, y + 8, s.text, {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ddddee',
+                stroke: '#000000', strokeThickness: 1
+            }).setDepth(3);
         });
 
-        // Drops
-        const dropY = statsY + 110;
-        this.add.text(cx - 150, dropY, 'ドロップ報酬', {
-            fontSize: '16px', fontFamily: 'Arial', color: '#88aacc'
-        });
+        // --- Right column: Drop Rewards ---
+        this.add.text(colRightX, contentY, 'ドロップ報酬', {
+            fontSize: '14px', fontFamily: 'Arial', color: '#6688aa',
+            stroke: '#000000', strokeThickness: 1
+        }).setDepth(3);
 
-        if (this.drops.length === 0 && this.isGameOver) {
-            this.add.text(cx - 150, dropY + 25, '(なし)', {
-                fontSize: '13px', fontFamily: 'Arial', color: '#666666'
-            });
+        if (this.drops.length === 0) {
+            this.add.text(colRightX + 10, contentY + 30, this.isGameOver ? '(なし)' : '(報酬なし)', {
+                fontSize: '12px', fontFamily: 'Arial', color: '#445566'
+            }).setDepth(3);
         } else {
             this.drops.forEach((drop, i) => {
-                this.add.text(cx - 150, dropY + 25 + i * 20, DropSystem.getDropDisplayName(drop), {
-                    fontSize: '13px', fontFamily: 'Arial', color: '#ffcc44'
-                });
+                const y = contentY + 25 + i * 34;
+                this.add.image(colRightX + 150, y + 14, 'result_drop_bg').setDepth(2);
+                const name = DropSystem.getDropDisplayName(drop);
+                this.add.text(colRightX + 14, y + 8, name, {
+                    fontSize: '13px', fontFamily: 'Arial', color: '#ffcc44',
+                    stroke: '#000000', strokeThickness: 1
+                }).setDepth(3);
             });
         }
 
-        // First clear rewards
+        // === First Clear Rewards ===
+        let bottomY = 340;
         if (this.isFirstClear && this.firstClearRewards.length > 0) {
-            const fcY = dropY + 25 + this.drops.length * 20 + 20;
-            this.add.text(cx - 150, fcY, '初回クリア報酬!', {
-                fontSize: '16px', fontFamily: 'Arial', color: '#ff88cc'
-            });
+            this.add.image(cx, bottomY, 'result_divider').setDepth(2);
+            bottomY += 10;
+
+            this.add.text(cx, bottomY, '初回クリア報酬!', {
+                fontSize: '14px', fontFamily: 'Arial', color: '#ff88cc',
+                stroke: '#000000', strokeThickness: 2
+            }).setOrigin(0.5).setDepth(3);
+
             this.firstClearRewards.forEach((r, i) => {
-                this.add.text(cx - 150, fcY + 25 + i * 20, DropSystem.getDropDisplayName(r), {
-                    fontSize: '13px', fontFamily: 'Arial', color: '#ffaadd'
-                });
+                const y = bottomY + 22 + i * 24;
+                this.add.text(cx, y, DropSystem.getDropDisplayName(r), {
+                    fontSize: '13px', fontFamily: 'Arial', color: '#ffaadd',
+                    stroke: '#000000', strokeThickness: 1
+                }).setOrigin(0.5).setDepth(3);
+            });
+            bottomY += 22 + this.firstClearRewards.length * 24 + 10;
+        }
+
+        // === Divider before party ===
+        this.add.image(cx, Math.max(bottomY, 380), 'result_divider').setDepth(2);
+
+        // === Party character icons ===
+        const partyY = Math.max(bottomY + 20, 400);
+        const characters = this.cache.json.get('characters');
+        if (characters && this.partyIds.length > 0) {
+            const partyChars = this.partyIds.map(id => characters.find(c => c.id === id)).filter(Boolean);
+            const startX = cx - ((partyChars.length - 1) * 60) / 2;
+
+            partyChars.forEach((charData, i) => {
+                const x = startX + i * 60;
+                const charId = charData.charId || charData.id.replace('_normal', '');
+                const iconKey = `icon_${charId}`;
+                const col = ATTRIBUTE_COLORS[charData.attribute] || 0xffffff;
+
+                // Background circle
+                this.add.circle(x, partyY, 22, 0x111122, 0.8)
+                    .setStrokeStyle(2, col, 0.9).setDepth(3);
+
+                // Icon or fallback
+                if (this.textures.exists(iconKey)) {
+                    this.add.image(x, partyY, iconKey)
+                        .setDisplaySize(36, 36).setDepth(4);
+                } else {
+                    this.add.circle(x, partyY, 14, col, 0.5).setDepth(4);
+                }
+
+                // Name
+                const shortName = charData.name.split('・')[0].substring(0, 4);
+                this.add.text(x, partyY + 28, shortName, {
+                    fontSize: '9px', fontFamily: 'Arial', color: '#aabbcc',
+                    stroke: '#000000', strokeThickness: 1
+                }).setOrigin(0.5).setDepth(3);
             });
         }
 
-        // Buttons
-        const btnY = GAME_HEIGHT - 60;
+        // === Buttons ===
+        const btnY = GAME_HEIGHT - 55;
 
-        const retryBtn = this.add.rectangle(cx - 100, btnY, 160, 44, 0x443322)
-            .setInteractive({ useHandCursor: true }).setStrokeStyle(1, 0x886644);
-        this.add.text(cx - 100, btnY, 'もう一度', {
-            fontSize: '16px', fontFamily: 'Arial', color: '#ffcc88'
-        }).setOrigin(0.5);
-        retryBtn.on('pointerdown', () => {
-            const characters = this.cache.json.get('characters');
-            const party = characters.slice(0, 3);
+        // Retry button
+        const retryImg = this.add.image(cx - 105, btnY, 'result_btn_retry')
+            .setInteractive({ useHandCursor: true }).setDepth(3);
+        this.add.text(cx - 105, btnY, 'もう一度', {
+            fontSize: '16px', fontFamily: 'Arial', color: '#fff0dd',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(4);
+
+        retryImg.on('pointerover', () => retryImg.setAlpha(0.8));
+        retryImg.on('pointerout', () => retryImg.setAlpha(1));
+        retryImg.on('pointerdown', () => {
+            const chars = this.cache.json.get('characters');
+            const party = chars.slice(0, 3);
             this.scene.start('GameScene', {
                 stageId: this.stageData.id,
                 stageData: this.stageData,
                 party
             });
         });
-        retryBtn.on('pointerover', () => retryBtn.setFillStyle(0x554433));
-        retryBtn.on('pointerout', () => retryBtn.setFillStyle(0x443322));
 
-        const menuBtn = this.add.rectangle(cx + 100, btnY, 160, 44, 0x224444)
-            .setInteractive({ useHandCursor: true }).setStrokeStyle(1, 0x448888);
-        this.add.text(cx + 100, btnY, 'メニューへ', {
-            fontSize: '16px', fontFamily: 'Arial', color: '#88ffcc'
-        }).setOrigin(0.5);
-        menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
-        menuBtn.on('pointerover', () => menuBtn.setFillStyle(0x335555));
-        menuBtn.on('pointerout', () => menuBtn.setFillStyle(0x224444));
+        // Menu button
+        const menuImg = this.add.image(cx + 105, btnY, 'result_btn_menu')
+            .setInteractive({ useHandCursor: true }).setDepth(3);
+        this.add.text(cx + 105, btnY, 'メニューへ', {
+            fontSize: '16px', fontFamily: 'Arial', color: '#ddfff0',
+            stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(4);
+
+        menuImg.on('pointerover', () => menuImg.setAlpha(0.8));
+        menuImg.on('pointerout', () => menuImg.setAlpha(1));
+        menuImg.on('pointerdown', () => this.scene.start('MenuScene'));
     }
 
     unlockGallery(stageId) {

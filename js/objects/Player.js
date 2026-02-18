@@ -217,7 +217,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     updateAutoFire(enemies, bulletPool, delta) {
-        if (!this.isActive || this.isDead) return;
+        if (this.isDead) return;
 
         if (this.isReloading) {
             this.reloadTimer -= delta;
@@ -228,7 +228,9 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             return;
         }
 
-        this.fireTimer -= delta;
+        // Inactive party members fire at 70% rate
+        const rateMult = this.isActive ? 1.0 : 0.7;
+        this.fireTimer -= delta * rateMult;
         if (this.fireTimer > 0) return;
 
         if (this.currentMagazine <= 0) {
@@ -310,15 +312,16 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 true,
                 {
                     piercing: this.weaponConfig.piercing || false,
-                    explosionRadius: this.weaponConfig.explosionRadius || 0
+                    explosionRadius: this.weaponConfig.explosionRadius || 0,
+                    ownerCritRate: this.critRate,
+                    ownerCritDmg: this.critDmg
                 }
             );
         }
 
         // Muzzle flash effect
-        const gameScene = this.scene;
-        if (gameScene.effects) {
-            gameScene.effects.muzzleFlash(this.x, this.y, baseAngle);
+        if (this.scene.effects) {
+            this.scene.effects.muzzleFlash(this.x, this.y, baseAngle);
         }
     }
 
@@ -351,7 +354,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 Math.floor(this.atk * mult),
                 this.attribute,
                 true,
-                { piercing: true }
+                { piercing: true, ownerCritRate: this.critRate, ownerCritDmg: this.critDmg }
             );
             if (bullet) {
                 bullet.setTint(0x00ffff);
@@ -386,7 +389,7 @@ class Player extends Phaser.Physics.Arcade.Sprite {
                 Math.floor(this.atk * mult / projectiles * 2),
                 this.attribute,
                 true,
-                { piercing: true }
+                { piercing: true, ownerCritRate: this.critRate, ownerCritDmg: this.critDmg }
             );
             if (bullet) {
                 bullet.setTint(0xffcc00);

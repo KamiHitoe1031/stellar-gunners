@@ -157,6 +157,9 @@ class PreloadScene extends Phaser.Scene {
         // === Effect particle textures ===
         this.genEffectTextures();
 
+        // === Result screen textures ===
+        this.genResultTextures();
+
         // Tile fallback
         if (!this.textures.exists('tile_floor')) {
             this.genSimpleRect('tile_floor', 32, 0x2a2a3a);
@@ -938,6 +941,260 @@ class PreloadScene extends Phaser.Scene {
         const ctx = canvas.getContext('2d');
         drawFn(ctx, size);
         this._save(key, canvas);
+    }
+
+    // ===== Result screen textures =====
+    genResultTextures() {
+        const W = GAME_WIDTH, H = GAME_HEIGHT;
+
+        // result_panel - main content panel (700x440, rounded, gradient border)
+        this._genRect('result_panel', 700, 440, (ctx, w, h) => {
+            // Outer glow border
+            ctx.shadowColor = 'rgba(60,120,200,0.3)';
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = 'rgba(40,60,100,0.6)';
+            this._roundRect(ctx, 0, 0, w, h, 12);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Inner dark fill
+            ctx.fillStyle = 'rgba(8,10,25,0.92)';
+            this._roundRect(ctx, 3, 3, w - 6, h - 6, 10);
+            ctx.fill();
+            // Top accent line
+            const grad = ctx.createLinearGradient(50, 3, w - 50, 3);
+            grad.addColorStop(0, 'rgba(60,120,200,0)');
+            grad.addColorStop(0.3, 'rgba(60,120,200,0.6)');
+            grad.addColorStop(0.7, 'rgba(60,120,200,0.6)');
+            grad.addColorStop(1, 'rgba(60,120,200,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(20, 3, w - 40, 2);
+        });
+
+        // result_header_clear - green/gold banner
+        this._genRect('result_header_clear', 500, 56, (ctx, w, h) => {
+            const grad = ctx.createLinearGradient(0, 0, w, 0);
+            grad.addColorStop(0, 'rgba(0,80,40,0)');
+            grad.addColorStop(0.2, 'rgba(0,120,60,0.5)');
+            grad.addColorStop(0.5, 'rgba(0,160,80,0.7)');
+            grad.addColorStop(0.8, 'rgba(0,120,60,0.5)');
+            grad.addColorStop(1, 'rgba(0,80,40,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+            // Horizontal lines
+            ctx.strokeStyle = 'rgba(100,255,150,0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(40, 6); ctx.lineTo(w - 40, 6); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(40, h - 6); ctx.lineTo(w - 40, h - 6); ctx.stroke();
+            // Corner accents
+            ctx.fillStyle = 'rgba(100,255,150,0.6)';
+            ctx.fillRect(30, 4, 12, 2);
+            ctx.fillRect(w - 42, 4, 12, 2);
+            ctx.fillRect(30, h - 6, 12, 2);
+            ctx.fillRect(w - 42, h - 6, 12, 2);
+        });
+
+        // result_header_fail - red banner
+        this._genRect('result_header_fail', 500, 56, (ctx, w, h) => {
+            const grad = ctx.createLinearGradient(0, 0, w, 0);
+            grad.addColorStop(0, 'rgba(80,0,0,0)');
+            grad.addColorStop(0.2, 'rgba(140,20,20,0.5)');
+            grad.addColorStop(0.5, 'rgba(180,30,30,0.7)');
+            grad.addColorStop(0.8, 'rgba(140,20,20,0.5)');
+            grad.addColorStop(1, 'rgba(80,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = 'rgba(255,80,80,0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(40, 6); ctx.lineTo(w - 40, 6); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(40, h - 6); ctx.lineTo(w - 40, h - 6); ctx.stroke();
+        });
+
+        // result_star_filled - gold star (40x40)
+        this._genParticle('result_star_filled', 40, (ctx, s) => {
+            const cx = s/2, cy = s/2;
+            ctx.fillStyle = '#ffcc00';
+            ctx.shadowColor = '#ffaa00';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+                const r = (i % 2 === 0) ? s/2 - 2 : s * 0.2;
+                ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Inner highlight
+            ctx.fillStyle = 'rgba(255,255,200,0.3)';
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+                const r = (i % 2 === 0) ? s * 0.3 : s * 0.12;
+                ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+        });
+
+        // result_star_empty - dark outline star (40x40)
+        this._genParticle('result_star_empty', 40, (ctx, s) => {
+            const cx = s/2, cy = s/2;
+            ctx.strokeStyle = 'rgba(100,100,120,0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+                const r = (i % 2 === 0) ? s/2 - 2 : s * 0.2;
+                ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(30,30,50,0.4)';
+            ctx.fill();
+        });
+
+        // result_divider - gradient horizontal line (600x2)
+        this._genRect('result_divider', 600, 2, (ctx, w, h) => {
+            const grad = ctx.createLinearGradient(0, 0, w, 0);
+            grad.addColorStop(0, 'rgba(60,100,160,0)');
+            grad.addColorStop(0.3, 'rgba(60,100,160,0.5)');
+            grad.addColorStop(0.7, 'rgba(60,100,160,0.5)');
+            grad.addColorStop(1, 'rgba(60,100,160,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+        });
+
+        // result_btn - button background (180x48, rounded)
+        ['result_btn_retry', 'result_btn_menu'].forEach((key, idx) => {
+            const baseCol = idx === 0 ? [180, 120, 40] : [40, 140, 140];
+            this._genRect(key, 180, 48, (ctx, w, h) => {
+                const grad = ctx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, `rgba(${baseCol[0]+30},${baseCol[1]+30},${baseCol[2]+30},0.9)`);
+                grad.addColorStop(1, `rgba(${baseCol[0]-20},${baseCol[1]-20},${baseCol[2]-20},0.9)`);
+                ctx.fillStyle = grad;
+                this._roundRect(ctx, 0, 0, w, h, 8);
+                ctx.fill();
+                // Border
+                ctx.strokeStyle = `rgba(${baseCol[0]+60},${baseCol[1]+60},${baseCol[2]+60},0.7)`;
+                ctx.lineWidth = 1.5;
+                this._roundRect(ctx, 0, 0, w, h, 8);
+                ctx.stroke();
+                // Top highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                this._roundRect(ctx, 2, 2, w - 4, h / 2 - 2, 6);
+                ctx.fill();
+            });
+        });
+
+        // Stat icons (20x20 each)
+        // Time icon - clock
+        this._genParticle('result_icon_time', 20, (ctx, s) => {
+            const cx = s/2, cy = s/2;
+            ctx.strokeStyle = '#88ccff';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, s/2 - 2, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - 1); ctx.lineTo(cx, cy - s * 0.28);
+            ctx.moveTo(cx, cy - 1); ctx.lineTo(cx + s * 0.2, cy + 1);
+            ctx.stroke();
+            ctx.fillStyle = '#88ccff';
+            ctx.beginPath(); ctx.arc(cx, cy, 1.5, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // Damage icon - sword
+        this._genParticle('result_icon_damage', 20, (ctx, s) => {
+            ctx.strokeStyle = '#ff8844';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(s * 0.2, s * 0.8);
+            ctx.lineTo(s * 0.7, s * 0.3);
+            ctx.stroke();
+            ctx.fillStyle = '#ff8844';
+            ctx.beginPath();
+            ctx.moveTo(s * 0.7, s * 0.15);
+            ctx.lineTo(s * 0.85, s * 0.3);
+            ctx.lineTo(s * 0.7, s * 0.38);
+            ctx.lineTo(s * 0.62, s * 0.3);
+            ctx.closePath();
+            ctx.fill();
+            // Guard
+            ctx.fillRect(s * 0.25, s * 0.65, s * 0.2, 3);
+        });
+
+        // Death icon - skull
+        this._genParticle('result_icon_death', 20, (ctx, s) => {
+            const cx = s/2, cy = s * 0.4;
+            ctx.fillStyle = '#ff6666';
+            ctx.beginPath();
+            ctx.arc(cx, cy, s * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(cx - s * 0.15, cy + s * 0.15, s * 0.3, s * 0.2);
+            // Eyes
+            ctx.fillStyle = '#220000';
+            ctx.beginPath();
+            ctx.arc(cx - 3, cy - 1, 2.5, 0, Math.PI * 2);
+            ctx.arc(cx + 3, cy - 1, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Jaw
+            ctx.fillStyle = '#ff6666';
+            ctx.fillRect(cx - 3, s * 0.7, 2, 4);
+            ctx.fillRect(cx + 1, s * 0.7, 2, 4);
+        });
+
+        // XP icon - up arrow
+        this._genParticle('result_icon_xp', 20, (ctx, s) => {
+            ctx.fillStyle = '#88ff88';
+            ctx.beginPath();
+            ctx.moveTo(s/2, 2);
+            ctx.lineTo(s - 3, s * 0.5);
+            ctx.lineTo(s * 0.65, s * 0.5);
+            ctx.lineTo(s * 0.65, s - 3);
+            ctx.lineTo(s * 0.35, s - 3);
+            ctx.lineTo(s * 0.35, s * 0.5);
+            ctx.lineTo(3, s * 0.5);
+            ctx.closePath();
+            ctx.fill();
+        });
+
+        // Credit icon - coin
+        this._genParticle('result_icon_credit', 20, (ctx, s) => {
+            const cx = s/2, cy = s/2;
+            ctx.fillStyle = '#ffcc44';
+            ctx.beginPath();
+            ctx.arc(cx, cy, s/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ddaa22';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = '#ddaa22';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('¢', cx, cy + 1);
+        });
+
+        // Drop item row background (300x28, rounded)
+        this._genRect('result_drop_bg', 300, 28, (ctx, w, h) => {
+            ctx.fillStyle = 'rgba(40,40,60,0.5)';
+            this._roundRect(ctx, 0, 0, w, h, 5);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(80,80,120,0.3)';
+            ctx.lineWidth = 1;
+            this._roundRect(ctx, 0, 0, w, h, 5);
+            ctx.stroke();
+        });
+    }
+
+    _genRect(key, w, h, drawFn) {
+        if (this.textures.exists(key)) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        drawFn(ctx, w, h);
+        this.textures.addCanvas(key, canvas);
     }
 
     // ===== Simple fallback rectangle =====
