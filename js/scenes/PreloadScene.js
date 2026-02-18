@@ -33,10 +33,12 @@ class PreloadScene extends Phaser.Scene {
         this.load.json('drop_tables', 'assets/data/drop_tables.json');
         this.load.json('weapon_parts', 'assets/data/weapon_parts.json');
 
-        // Load character sprites (game-ready processed images)
+        // Load character sprite sheets (processed from AI-generated 4x4 grids)
         for (let i = 1; i <= 6; i++) {
             const id = `chr_0${i}`;
-            this.load.image(`${id}_normal`, `assets/images/game/characters/${id}.png`);
+            this.load.spritesheet(`${id}_normal`, `assets/images/game/spritesheets/${id}_normal.png`, {
+                frameWidth: 64, frameHeight: 64
+            });
             this.load.image(`icon_${id}`, `assets/images/game/ui/${id}_icon.png`);
         }
 
@@ -129,15 +131,26 @@ class PreloadScene extends Phaser.Scene {
             return tex.frameTotal > minFrames;
         };
 
-        // Character animations: 13 frames (0-2 idle, 3-6 walk, 7-8 fire, 9 hit, 10-12 death)
+        // Character animations
+        // AI sprite sheets: 16 frames (0-3 idle, 4-7 walk, 8-11 fire/action, 12 hit, 13-15 death)
+        // Fallback procedural: 13 frames (0-2 idle, 3-6 walk, 7-8 fire, 9 hit, 10-12 death)
         characters.forEach(c => {
             const k = c.spriteKey;
-            if (!hasFrames(k, 12)) return; // Need 13 frames (0-12)
-            this.anims.create({ key: `${k}_idle`, frames: this.anims.generateFrameNumbers(k, { start: 0, end: 2 }), frameRate: ANIM_FPS.idle, repeat: -1 });
-            this.anims.create({ key: `${k}_walk`, frames: this.anims.generateFrameNumbers(k, { start: 3, end: 6 }), frameRate: ANIM_FPS.walk, repeat: -1 });
-            this.anims.create({ key: `${k}_fire`, frames: this.anims.generateFrameNumbers(k, { start: 7, end: 8 }), frameRate: ANIM_FPS.fire, repeat: 0 });
-            this.anims.create({ key: `${k}_hit`, frames: this.anims.generateFrameNumbers(k, { start: 9, end: 9 }), frameRate: ANIM_FPS.hit, repeat: 0 });
-            this.anims.create({ key: `${k}_death`, frames: this.anims.generateFrameNumbers(k, { start: 10, end: 12 }), frameRate: ANIM_FPS.death, repeat: 0 });
+            if (hasFrames(k, 15)) {
+                // 16-frame AI sprite sheet
+                this.anims.create({ key: `${k}_idle`, frames: this.anims.generateFrameNumbers(k, { start: 0, end: 3 }), frameRate: ANIM_FPS.idle, repeat: -1 });
+                this.anims.create({ key: `${k}_walk`, frames: this.anims.generateFrameNumbers(k, { start: 4, end: 7 }), frameRate: ANIM_FPS.walk, repeat: -1 });
+                this.anims.create({ key: `${k}_fire`, frames: this.anims.generateFrameNumbers(k, { start: 8, end: 10 }), frameRate: ANIM_FPS.fire, repeat: 0 });
+                this.anims.create({ key: `${k}_hit`, frames: this.anims.generateFrameNumbers(k, { start: 12, end: 12 }), frameRate: ANIM_FPS.hit, repeat: 0 });
+                this.anims.create({ key: `${k}_death`, frames: this.anims.generateFrameNumbers(k, { start: 13, end: 15 }), frameRate: ANIM_FPS.death, repeat: 0 });
+            } else if (hasFrames(k, 12)) {
+                // 13-frame procedural fallback
+                this.anims.create({ key: `${k}_idle`, frames: this.anims.generateFrameNumbers(k, { start: 0, end: 2 }), frameRate: ANIM_FPS.idle, repeat: -1 });
+                this.anims.create({ key: `${k}_walk`, frames: this.anims.generateFrameNumbers(k, { start: 3, end: 6 }), frameRate: ANIM_FPS.walk, repeat: -1 });
+                this.anims.create({ key: `${k}_fire`, frames: this.anims.generateFrameNumbers(k, { start: 7, end: 8 }), frameRate: ANIM_FPS.fire, repeat: 0 });
+                this.anims.create({ key: `${k}_hit`, frames: this.anims.generateFrameNumbers(k, { start: 9, end: 9 }), frameRate: ANIM_FPS.hit, repeat: 0 });
+                this.anims.create({ key: `${k}_death`, frames: this.anims.generateFrameNumbers(k, { start: 10, end: 12 }), frameRate: ANIM_FPS.death, repeat: 0 });
+            }
         });
 
         // Enemy animations: 8 frames (0-1 idle, 2-4 walk, 5 hit, 6-7 death)
@@ -155,11 +168,17 @@ class PreloadScene extends Phaser.Scene {
         const characters = this.cache.json.get('characters');
         const enemies = this.cache.json.get('enemies');
 
-        // === Character battle sprites (48x48 x 13 frame sprite sheets) ===
+        // === Character battle sprites ===
+        // Use AI-generated sprite sheets (16 frames x 64x64) if loaded,
+        // otherwise fall back to procedural generation (13 frames x 48x48)
         characters.forEach(c => {
-            // Always regenerate as sprite sheet for animation support
-            // (loaded PNGs are single images, not sprite sheets)
             if (this.textures.exists(c.spriteKey)) {
+                const tex = this.textures.get(c.spriteKey);
+                if (tex.frameTotal >= 16) {
+                    // AI sprite sheet loaded successfully - keep it
+                    return;
+                }
+                // Single image or bad load - replace with procedural
                 this.textures.remove(c.spriteKey);
             }
             this.genCharSprite(c);
@@ -193,10 +212,10 @@ class PreloadScene extends Phaser.Scene {
             this.genSimpleRect('boss_default', 72, 0xdd00dd);
         }
 
-        // Bullet textures (glow circles)
-        this.genBullet('bullet_player', 5, 0xffff00);
-        this.genBullet('bullet_enemy', 5, 0xff4444);
-        this.genBullet('bullet_boss', 7, 0xdd44ff);
+        // Bullet textures (glow circles) - sized for visibility
+        this.genBullet('bullet_player', 8, 0xffff00);
+        this.genBullet('bullet_enemy', 7, 0xff4444);
+        this.genBullet('bullet_boss', 10, 0xdd44ff);
 
         // === Effect particle textures ===
         this.genEffectTextures();
@@ -206,6 +225,9 @@ class PreloadScene extends Phaser.Scene {
 
         // === Obstacle textures ===
         this.genObstacleTextures();
+
+        // === Weapon type icons (for shop/equipment) ===
+        this.genWeaponIcons();
 
         // === Area background textures ===
         this.genBackgroundTextures();
@@ -1300,6 +1322,81 @@ class PreloadScene extends Phaser.Scene {
         const ctx = canvas.getContext('2d');
         drawFn(ctx, w, h);
         this.textures.addCanvas(key, canvas);
+    }
+
+    // ===== Weapon type icons (48x48) =====
+    genWeaponIcons() {
+        const weapons = {
+            pistol: { color: 0xccaa88, shape: 'pistol' },
+            assault_rifle: { color: 0x88aacc, shape: 'rifle' },
+            shotgun: { color: 0xcc8844, shape: 'shotgun' },
+            sniper_rifle: { color: 0x44cccc, shape: 'sniper' },
+            launcher: { color: 0xcc6644, shape: 'launcher' }
+        };
+
+        for (const [type, info] of Object.entries(weapons)) {
+            const key = `wpn_icon_${type}`;
+            if (this.textures.exists(key)) continue;
+            const s = 48;
+            const canvas = document.createElement('canvas');
+            canvas.width = s; canvas.height = s;
+            const ctx = canvas.getContext('2d');
+
+            // Background circle
+            ctx.fillStyle = this._rgba(info.color, 0.2);
+            ctx.beginPath();
+            ctx.arc(s/2, s/2, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = this._rgba(info.color, 0.6);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Weapon silhouette
+            ctx.fillStyle = this._rgb(info.color);
+            ctx.strokeStyle = this._darken(info.color, 40);
+            ctx.lineWidth = 1;
+
+            switch (info.shape) {
+                case 'pistol':
+                    ctx.fillRect(14, 20, 20, 5);  // barrel
+                    ctx.fillRect(20, 25, 6, 10);   // grip
+                    ctx.fillRect(12, 18, 6, 7);     // trigger guard
+                    break;
+                case 'rifle':
+                    ctx.fillRect(8, 22, 32, 5);   // barrel + body
+                    ctx.fillRect(22, 27, 6, 8);    // grip
+                    ctx.fillRect(30, 18, 4, 4);    // sight
+                    ctx.fillRect(8, 22, 3, 3);     // muzzle
+                    break;
+                case 'shotgun':
+                    ctx.fillRect(8, 22, 30, 6);   // barrel (thicker)
+                    ctx.fillRect(24, 28, 6, 8);    // grip
+                    ctx.fillRect(8, 20, 6, 3);     // pump
+                    break;
+                case 'sniper':
+                    ctx.fillRect(6, 23, 36, 4);   // long barrel
+                    ctx.fillRect(24, 27, 5, 8);    // grip
+                    ctx.fillRect(30, 17, 6, 6);    // scope
+                    ctx.fillRect(32, 23, 2, 4);    // scope mount
+                    break;
+                case 'launcher':
+                    ctx.fillRect(10, 18, 28, 8);  // tube
+                    ctx.fillRect(22, 26, 6, 8);    // grip
+                    ctx.beginPath();
+                    ctx.arc(10, 22, 4, 0, Math.PI * 2);
+                    ctx.fill();                     // muzzle opening
+                    break;
+            }
+
+            // Weapon type label
+            const labels = { pistol: 'PI', assault_rifle: 'AR', shotgun: 'SG', sniper_rifle: 'SR', launcher: 'RL' };
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(labels[type], s/2, s - 4);
+
+            this.textures.addCanvas(key, canvas);
+        }
     }
 
     // ===== Obstacle textures =====

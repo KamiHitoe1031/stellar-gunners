@@ -118,15 +118,30 @@ class ShopScene extends Phaser.Scene {
                 .setInteractive({ useHandCursor: true })
                 .setStrokeStyle(1, borderColor);
 
-            // Rarity indicator
-            this.add.rectangle(60, y + 28, 6, 50, borderColor);
+            // Weapon/item icon
+            const iconX = 60;
+            if (item.data && item.data.weaponType) {
+                const iconKey = `wpn_icon_${item.data.weaponType}`;
+                if (this.textures.exists(iconKey)) {
+                    this.add.image(iconX, y + 28, iconKey).setDisplaySize(44, 44);
+                }
+            } else {
+                // Material icon (colored square)
+                const matColors = { exp_chip_s: 0x44cc88, exp_chip_m: 0x4488cc, exp_chip_l: 0x8844cc, stamina_drink: 0xcc8844 };
+                this.add.rectangle(iconX, y + 28, 40, 40, matColors[item.id] || 0x666666, 0.8)
+                    .setStrokeStyle(1, borderColor);
+                const matLabels = { exp_chip_s: 'EXP\nS', exp_chip_m: 'EXP\nM', exp_chip_l: 'EXP\nL', stamina_drink: '電力' };
+                this.add.text(iconX, y + 28, matLabels[item.id] || '?', {
+                    fontSize: '10px', fontFamily: 'Arial', color: '#ffffff', align: 'center'
+                }).setOrigin(0.5);
+            }
 
             // Name + desc
             const rarityStr = '★'.repeat(item.rarity);
-            this.add.text(80, y + 12, `${rarityStr} ${item.name}`, {
+            this.add.text(92, y + 12, `${rarityStr} ${item.name}`, {
                 fontSize: '14px', fontFamily: 'Arial', color: '#ffffff'
             });
-            this.add.text(80, y + 33, item.desc, {
+            this.add.text(92, y + 33, item.desc, {
                 fontSize: '11px', fontFamily: 'Arial', color: '#aaaaaa'
             });
 

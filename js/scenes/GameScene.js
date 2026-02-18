@@ -302,10 +302,10 @@ class GameScene extends Phaser.Scene {
             duration: 800, yoyo: true, repeat: -1
         });
 
-        // Physics body for overlap detection (enlarged hitbox)
+        // Physics body for overlap detection (centered on visual circle)
         this.physics.add.existing(this.exitPortal, true);
-        this.exitPortal.body.setSize(100, 100);
-        this.exitPortal.body.setOffset(-50, -50);
+        this.exitPortal.body.setSize(120, 120);
+        this.exitPortal.body.setOffset(-10, -10);
         this.exitPortalOverlap = this.physics.add.overlap(
             this.activePlayer, this.exitPortal,
             () => this.onPlayerReachPortal(),
@@ -667,18 +667,28 @@ class GameScene extends Phaser.Scene {
         if (index < 0 || index >= this.players.length) return;
         if (this.players[index].isDead) return;
 
+        // Remember previous active player's position
+        const prevX = this.activePlayer.x;
+        const prevY = this.activePlayer.y;
+
         this.players[this.activePlayerIndex].setAsActive(false);
         this.activePlayerIndex = index;
         this.activePlayer = this.players[index];
         this.activePlayer.setAsActive(true);
+
+        // Snap new active player to previous active's position (no camera jump)
+        this.activePlayer.setPosition(prevX, prevY);
+        this.activePlayer.nameLabel.setPosition(prevX, prevY - 24);
         this.cameras.main.startFollow(this.activePlayer, true, 0.1, 0.1);
 
+        // Position inactive players nearby
         this.players.forEach((p, i) => {
             if (i !== index && !p.isDead) {
                 p.setPosition(
-                    this.activePlayer.x + (i - index) * 40,
-                    this.activePlayer.y + 30
+                    prevX + (i - index) * 40,
+                    prevY + 30
                 );
+                p.nameLabel.setPosition(p.x, p.y - 24);
             }
         });
 
@@ -893,13 +903,13 @@ class GameScene extends Phaser.Scene {
             const activeEnemies = this.enemyPool.getActiveEnemies();
             this.activePlayer.updateAutoFire(activeEnemies, this.playerBullets, delta);
 
-            // Inactive players: follow + auto-fire
+            // Inactive players: follow active player closely + auto-fire
             this.players.forEach((p, i) => {
                 if (i !== this.activePlayerIndex && !p.isDead) {
                     const targetX = this.activePlayer.x + (i - this.activePlayerIndex) * 40;
                     const targetY = this.activePlayer.y + 30;
-                    p.x += (targetX - p.x) * 0.05;
-                    p.y += (targetY - p.y) * 0.05;
+                    p.x += (targetX - p.x) * 0.15;
+                    p.y += (targetY - p.y) * 0.15;
                     p.nameLabel.setPosition(p.x, p.y - 24);
                     p.updateAutoFire(activeEnemies, this.playerBullets, delta);
                 }

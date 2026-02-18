@@ -66,12 +66,13 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Animation state
-        this.animState = 'idle';
+        this.animState = '';
         this.spriteKey = charData.spriteKey;
 
         this.setCollideWorldBounds(true);
-        this.setDisplaySize(48, 48);
-        this.body.setSize(28, 28);
+        this.setDisplaySize(56, 56);
+        this.body.setSize(30, 30);
+        this.body.setOffset(17, 17);
         this.setDepth(50);
 
         // Start idle animation

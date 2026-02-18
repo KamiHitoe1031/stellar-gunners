@@ -7,7 +7,7 @@ class BulletPool {
             runChildUpdate: true
         });
 
-        const bodyRadius = textureKey === 'bullet_boss' ? 6 : 4;
+        const bodyRadius = textureKey === 'bullet_boss' ? 8 : 6;
         for (let i = 0; i < size; i++) {
             const bullet = new Bullet(scene, -100, -100, textureKey);
             this.group.add(bullet, true);
