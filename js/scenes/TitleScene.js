@@ -12,10 +12,14 @@ class TitleScene extends Phaser.Scene {
         // Dark base
         this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x050515);
 
-        // Key visual background (if loaded)
+        // Key visual background (if loaded) - cover mode to preserve aspect ratio
         if (this.textures.exists('key_visual')) {
             const kv = this.add.image(cx, cy, 'key_visual');
-            kv.setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+            const kvTex = this.textures.get('key_visual').getSourceImage();
+            const scaleX = GAME_WIDTH / kvTex.width;
+            const scaleY = GAME_HEIGHT / kvTex.height;
+            const coverScale = Math.max(scaleX, scaleY);
+            kv.setScale(coverScale);
             kv.setAlpha(0.85);
 
             // Vignette overlay (darkens edges for depth)
@@ -50,11 +54,11 @@ class TitleScene extends Phaser.Scene {
         // Title logo (if loaded) or text fallback
         let titleObj;
         if (this.textures.exists('title_logo')) {
-            const logo = this.add.image(cx, 90, 'title_logo');
-            // Scale to fit ~600px wide
+            const logo = this.add.image(cx, 80, 'title_logo');
+            // Scale to fit within title area (top portion, above characters)
             const tex = this.textures.get('title_logo');
             const src = tex.getSourceImage();
-            const scale = Math.min(620 / src.width, 140 / src.height);
+            const scale = Math.min(750 / src.width, 180 / src.height);
             logo.setScale(scale);
             logo.setDepth(10);
             titleObj = logo;
