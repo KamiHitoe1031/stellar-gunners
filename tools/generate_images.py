@@ -559,6 +559,96 @@ def gen_backgrounds():
         time.sleep(DELAY_BETWEEN_REQUESTS)
 
 
+def gen_pv_action_art():
+    """Generate action illustration for each character using portraits as reference.
+    These are used as VEO image-to-video reference frames for PV clips."""
+    print("\n=== Generating PV Action Art (for VEO reference) ===\n")
+
+    portrait_map = {
+        "chr_01": "confident",
+        "chr_02": "calm",
+        "chr_03": "confident",
+        "chr_04": "cool",
+        "chr_05": "cheerful",
+        "chr_06": "focused",
+    }
+
+    action_descriptions = {
+        "chr_01": (
+            "dynamic action pose, dashing forward while firing her assault rifle, "
+            "green bio-energy particles swirling around her, spent shell casings flying, "
+            "dramatic wind blowing her red ponytail, intense determined expression"
+        ),
+        "chr_02": (
+            "elegant combat pose, channeling psychic healing energy with one hand "
+            "while aiming her pistol with the other, purple energy waves radiating outward, "
+            "hair floating with psychic power, serene yet powerful expression"
+        ),
+        "chr_03": (
+            "powerful action stance, blasting her shotgun with one hand while her "
+            "mechanical gauntlets project a blue energy shield, ground cracking beneath her, "
+            "fearless grin, blue sparks flying from her armor"
+        ),
+        "chr_04": (
+            "precise sniper stance on a high vantage point, looking through scope, "
+            "dark purple energy coiling around the barrel of her sniper rifle, "
+            "scarf flowing dramatically in the wind, cool emotionless focused expression"
+        ),
+        "chr_05": (
+            "energetic combat pose, leaping through the air with her rocket launcher, "
+            "brilliant orange explosions blooming in the background, "
+            "bright cheerful smile, twin tails flying, immunity golden aura around her"
+        ),
+        "chr_06": (
+            "calculated precision pose, kneeling and aiming her sniper rifle, "
+            "ice crystals forming along the barrel and spreading on the ground, "
+            "frost particles in the air, AR glasses glowing with targeting data, cold focused eyes"
+        ),
+    }
+
+    output_dir = PROJECT_ROOT / "assets" / "video" / "pv_art"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    portrait_dir = ASSETS_DIR / "portraits"
+
+    for char_key, char in CHARACTERS.items():
+        filename = f"{char_key}_action.png"
+        output_path = output_dir / filename
+
+        if output_path.exists():
+            print(f"  SKIP (exists): {filename}")
+            continue
+
+        expr = portrait_map.get(char_key)
+        if not expr:
+            continue
+
+        ref_path = portrait_dir / f"{char_key}_{expr}.png"
+        if not ref_path.exists():
+            print(f"  WARNING: Missing portrait {ref_path.name}, skipping.")
+            continue
+
+        action_desc = action_descriptions.get(char_key, "dynamic action battle pose")
+        colors = char["colors"]
+
+        prompt = (
+            f"Using this character's exact design as reference - same face, hair color, "
+            f"hair style, outfit, and weapon - create a new dramatic action illustration. "
+            f"Character: {char['appearance']}. "
+            f"Pose and action: {action_desc}. "
+            f"Background: dramatic ruined sci-fi cityscape with neon lights, energy beams in the sky, "
+            f"floating debris, atmospheric cinematic lighting. "
+            f"Style: {STYLE_BASE}, dynamic action composition, dramatic camera angle, "
+            f"motion blur on fast elements, energy effects. "
+            f"Hair color: {colors['hair']}, outfit: {colors['outfit']}, accent: {colors['accent']}. "
+            f"Full body visible, landscape orientation (16:9), single character only. "
+            f"High quality, no text or UI elements."
+        )
+
+        print(f"\n  --- {char['name_jp']} ({char_key}) ---")
+        generate_image_with_refs(prompt, [str(ref_path)], str(output_path), retry=2)
+        time.sleep(DELAY_BETWEEN_REQUESTS)
+
+
 def gen_key_visual():
     """Generate key visual and title logo using character portraits as reference."""
     print("\n=== Generating Key Visual & Title Logo ===\n")
@@ -651,6 +741,8 @@ def main():
             gen_enemies()
         elif task == "backgrounds":
             gen_backgrounds()
+        elif task == "pvart":
+            gen_pv_action_art()
         elif task == "keyvisual":
             gen_key_visual()
         elif task == "all":
@@ -677,6 +769,8 @@ def main():
         print("  icons       - Generate face icons for UI (6 images)")
         print("  enemies     - Generate enemy sprites (7 images)")
         print("  backgrounds - Generate background images (5 images)")
+        print("  pvart       - Generate PV action illustrations (6 images, for VEO ref)")
+        print("  keyvisual   - Generate key visual + title logo")
         print("  all         - Generate everything (40+ images)")
 
     print("\nDone!")

@@ -49,7 +49,7 @@ class PreloadScene extends Phaser.Scene {
             'boss_xr07'
         ];
         enemyFiles.forEach(id => {
-            this.load.image(id, `assets/images/game/enemies/${id}.png`);
+            this.load.image(id, `assets/images/enemies/${id}.png`);
         });
 
         // Load battle backgrounds
@@ -58,7 +58,7 @@ class PreloadScene extends Phaser.Scene {
             'bg_city_ruin', 'bg_city_ruin_deep', 'bg_city_lab'
         ];
         bgFiles.forEach(id => {
-            this.load.image(id, `assets/images/game/backgrounds/${id}.png`);
+            this.load.image(id, `assets/images/backgrounds/${id}.png`);
         });
 
         // Key visual & title logo (optional - fallback if missing)

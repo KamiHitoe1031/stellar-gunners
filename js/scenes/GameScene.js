@@ -82,6 +82,20 @@ class GameScene extends Phaser.Scene {
             THREE: this.input.keyboard.addKey('THREE')
         };
 
+        // Prevent right-click context menu on game canvas
+        this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Reset keys when window loses focus (prevents stuck movement)
+        this._onBlur = () => {
+            if (this.wasd) {
+                Object.values(this.wasd).forEach(k => k.reset());
+            }
+            if (this.cursors) {
+                Object.values(this.cursors).forEach(k => { if (k && k.reset) k.reset(); });
+            }
+        };
+        window.addEventListener('blur', this._onBlur);
+
         // Base collisions (players, enemies, bullets)
         this.setupCollisions();
 
@@ -912,6 +926,11 @@ class GameScene extends Phaser.Scene {
                     p.y += (targetY - p.y) * 0.15;
                     p.nameLabel.setPosition(p.x, p.y - 24);
                     p.updateAutoFire(activeEnemies, this.playerBullets, delta);
+                    // Update sub-character facing toward nearest enemy
+                    const subTarget = p.findNearestEnemy(activeEnemies);
+                    if (subTarget) {
+                        p.setFlipX(subTarget.x < p.x);
+                    }
                 }
             });
         }
@@ -1081,6 +1100,9 @@ class GameScene extends Phaser.Scene {
     // ===== Cleanup =====
 
     cleanup() {
+        if (this._onBlur) {
+            window.removeEventListener('blur', this._onBlur);
+        }
         EventsCenter.off(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
         EventsCenter.off(GameEvents.AREA_CLEARED, this.onAreaCleared, this);
         EventsCenter.off(GameEvents.STAGE_CLEARED, this.onStageCleared, this);
