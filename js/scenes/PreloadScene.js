@@ -49,16 +49,30 @@ class PreloadScene extends Phaser.Scene {
             'boss_xr07'
         ];
         enemyFiles.forEach(id => {
-            this.load.image(id, `assets/images/enemies/${id}.png`);
+            this.load.image(id, `assets/images/game/enemies/${id}.png`);
         });
 
-        // Load battle backgrounds
-        const bgFiles = [
-            'bg_battle_city', 'bg_battle_lab',
-            'bg_city_ruin', 'bg_city_ruin_deep', 'bg_city_lab'
+        // Load battle backgrounds - keys must match bg_theme_* used by GameScene.createFloorForTheme()
+        const bgMapping = {
+            'bg_theme_city': 'bg_battle_city',
+            'bg_theme_lab': 'bg_battle_lab',
+            'bg_theme_city_ruins': 'bg_city_ruin',
+            'bg_theme_underground': 'bg_city_ruin_deep',
+            'bg_theme_lab_corridor': 'bg_city_lab',
+            'bg_theme_city_interior': 'bg_city_interior',
+            'bg_theme_boss_arena': 'bg_boss_arena'
+        };
+        Object.entries(bgMapping).forEach(([key, file]) => {
+            this.load.image(key, `assets/images/game/backgrounds/${file}.png`);
+        });
+
+        // Load AI-generated skill icons
+        const skillIcons = [
+            'icon_skill_shoot', 'icon_skill_heal', 'icon_skill_shield',
+            'icon_skill_buff', 'icon_skill_debuff', 'icon_skill_aoe', 'icon_skill_break'
         ];
-        bgFiles.forEach(id => {
-            this.load.image(id, `assets/images/backgrounds/${id}.png`);
+        skillIcons.forEach(id => {
+            this.load.image(id, `assets/images/game/ui/skills/${id}.png`);
         });
 
         // Key visual & title logo (optional - fallback if missing)
@@ -193,15 +207,22 @@ class PreloadScene extends Phaser.Scene {
             }
         });
 
-        // === Skill type icons (40x40) ===
-        this.genAllSkillIcons();
+        // === Skill type icons (40x40) - only generate procedural if AI images not loaded ===
+        const skillIconKeys = [
+            'icon_skill_shoot', 'icon_skill_heal', 'icon_skill_shield',
+            'icon_skill_buff', 'icon_skill_debuff', 'icon_skill_aoe', 'icon_skill_break'
+        ];
+        const needProceduralSkillIcons = skillIconKeys.some(k => !this.textures.exists(k));
+        if (needProceduralSkillIcons) {
+            this.genAllSkillIcons();
+        }
 
         // === Enemy battle sprites (8 frame sprite sheets) ===
+        // Keep AI-generated images if loaded; only generate procedural for missing ones
         enemies.forEach(e => {
-            if (this.textures.exists(e.spriteKey)) {
-                this.textures.remove(e.spriteKey);
+            if (!this.textures.exists(e.spriteKey)) {
+                this.genEnemySprite(e);
             }
-            this.genEnemySprite(e);
         });
 
         // Default fallbacks

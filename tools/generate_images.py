@@ -538,6 +538,22 @@ BACKGROUNDS = [
     ("bg_city_lab", "Abandoned high-tech research laboratory interior, broken computer terminals, holographic displays still active, test tubes and equipment, blue-white lighting"),
     ("bg_battle_city", "Top-down view of urban battlefield with ruined buildings, craters, broken vehicles, debris scattered, overhead perspective for 2D game"),
     ("bg_battle_lab", "Top-down view of research facility interior with lab equipment, corridors, computer stations, overhead perspective for 2D game"),
+    ("bg_city_interior", "Interior of abandoned building in post-apocalyptic city, broken furniture, graffiti on walls, dim lighting through shattered windows, dust particles in air beams, top-down overhead perspective for 2D game"),
+    ("bg_boss_arena", "Grand circular arena chamber with glowing energy conduits on walls, central platform surrounded by pulsing red-purple void energy, dramatic lighting, high-tech sci-fi boss room, ominous atmosphere, top-down overhead perspective for 2D game"),
+]
+
+# ============================================================
+# Skill Icon Definitions
+# ============================================================
+
+SKILL_ICONS = [
+    ("icon_skill_shoot", "A glowing crosshair/targeting reticle icon, bright yellow-green energy, precise aiming sight with concentric rings, sci-fi military HUD style"),
+    ("icon_skill_heal", "A green glowing medical cross/plus symbol icon, healing energy particles, soft green glow, sci-fi medical symbol with holographic effect"),
+    ("icon_skill_shield", "A blue glowing energy shield icon, hexagonal barrier pattern, protective forcefield shape, bright blue-white energy, sci-fi defense symbol"),
+    ("icon_skill_buff", "A golden upward arrow icon with glowing energy trail, power boost symbol, ascending energy particles, warm yellow-orange glow, sci-fi enhancement effect"),
+    ("icon_skill_debuff", "A purple circle with X mark icon, suppression/weakening symbol, dark purple energy, debilitating effect indicator, sci-fi hex/curse style"),
+    ("icon_skill_aoe", "A red-orange starburst explosion icon, radial energy blast pattern, area damage indicator, fiery particle effects, sci-fi explosive symbol"),
+    ("icon_skill_break", "A red lightning bolt icon striking downward, break/shatter effect, crackling red energy, armor-piercing symbol, sci-fi destructive force"),
 ]
 
 def gen_backgrounds():
@@ -556,6 +572,31 @@ def gen_backgrounds():
 
         prompt = build_background_prompt(bg_key, desc)
         generate_image(prompt, str(output_path), aspect_ratio="16:9", image_size="1K")
+        time.sleep(DELAY_BETWEEN_REQUESTS)
+
+
+def gen_skill_icons():
+    """Generate skill type icons for battle UI."""
+    print("\n=== Generating Skill Icons ===\n")
+    output_dir = ASSETS_DIR / "ui" / "skills"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for icon_key, desc in SKILL_ICONS:
+        filename = f"{icon_key}.png"
+        output_path = output_dir / filename
+
+        if output_path.exists():
+            print(f"  SKIP (exists): {filename}")
+            continue
+
+        prompt = (
+            f"Create a game UI skill icon: {desc}. "
+            f"Square icon on solid black background (#000000). "
+            f"Clean, sharp edges, suitable for small 40x40 pixel display. "
+            f"Anime game style, vibrant glowing colors, no text. "
+            f"Simple recognizable symbol centered in frame."
+        )
+        generate_image(prompt, str(output_path), aspect_ratio="1:1", image_size="1K")
         time.sleep(DELAY_BETWEEN_REQUESTS)
 
 
@@ -741,6 +782,8 @@ def main():
             gen_enemies()
         elif task == "backgrounds":
             gen_backgrounds()
+        elif task == "skillicons":
+            gen_skill_icons()
         elif task == "pvart":
             gen_pv_action_art()
         elif task == "keyvisual":
@@ -751,6 +794,7 @@ def main():
             gen_face_icons()
             gen_enemies()
             gen_backgrounds()
+            gen_skill_icons()
             gen_key_visual()
         elif task == "test":
             # Quick test: generate one portrait
@@ -759,7 +803,7 @@ def main():
             generate_image(prompt, str(output))
         else:
             print(f"Unknown task: {task}")
-            print("Usage: python generate_images.py [portraits|sprites|icons|enemies|backgrounds|all|test]")
+            print("Usage: python generate_images.py [portraits|sprites|icons|enemies|backgrounds|skillicons|pvart|keyvisual|all|test]")
     else:
         print("\nUsage: python generate_images.py [task]")
         print("Tasks:")
