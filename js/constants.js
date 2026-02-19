@@ -84,6 +84,14 @@ const OBSTACLE_TYPES = {
     crate:     { width: 32, height: 32, destructible: true, hp: 150 }
 };
 
+// Collision map grid dimensions
+const COLLISION_GRID_COLS = 20;
+const COLLISION_GRID_ROWS = 15;
+const COLLISION_CELL_WIDTH = FIELD_WIDTH / COLLISION_GRID_COLS;   // 60
+const COLLISION_CELL_HEIGHT = FIELD_HEIGHT / COLLISION_GRID_ROWS; // 60
+const CELL_WALKABLE = 0;
+const CELL_WALL = 1;
+
 // Area layout templates
 const AREA_LAYOUTS = {
     open:     { count: 0,  types: [] },

@@ -33,6 +33,21 @@ class PreloadScene extends Phaser.Scene {
         this.load.json('drop_tables', 'assets/data/drop_tables.json');
         this.load.json('weapon_parts', 'assets/data/weapon_parts.json');
 
+        // Load collision maps for each stage
+        for (let s = 1; s <= 12; s++) {
+            const stageId = `stage_1_${s}`;
+            this.load.json(`collision_${stageId}`, `assets/data/collision_maps/collision_${stageId}.json`);
+        }
+
+        // Load area-specific backgrounds and stage thumbnails
+        // Uses stage data to enumerate areas; fall back gracefully if images don't exist
+        for (let s = 1; s <= 12; s++) {
+            for (let a = 0; a < 4; a++) {
+                this.load.image(`area_bg_stage_1_${s}_${a}`, `assets/images/game/area_backgrounds/area_stage_1_${s}_${a}.png`);
+            }
+            this.load.image(`thumb_stage_1_${s}`, `assets/images/game/thumbnails/stage_1_${s}.png`);
+        }
+
         // Load character sprite sheets (processed from AI-generated 4x4 grids)
         for (let i = 1; i <= 6; i++) {
             const id = `chr_0${i}`;
@@ -233,10 +248,10 @@ class PreloadScene extends Phaser.Scene {
             this.genSimpleRect('boss_default', 72, 0xdd00dd);
         }
 
-        // Bullet textures (glow circles) - sized for visibility
-        this.genBullet('bullet_player', 8, 0xffff00);
-        this.genBullet('bullet_enemy', 7, 0xff4444);
-        this.genBullet('bullet_boss', 10, 0xdd44ff);
+        // Bullet textures (glow circles) - sized for clear visibility
+        this.genBullet('bullet_player', 12, 0xffff00);
+        this.genBullet('bullet_enemy', 10, 0xff4444);
+        this.genBullet('bullet_boss', 14, 0xdd44ff);
 
         // === Effect particle textures ===
         this.genEffectTextures();
@@ -916,30 +931,44 @@ class PreloadScene extends Phaser.Scene {
 
     // ===== Bullet with glow =====
     genBullet(key, radius, color) {
-        const s = radius * 4;
+        const s = radius * 5;
         const canvas = this._makeCanvas(key, s, s);
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const cx = s/2, cy = s/2;
 
-        // Glow
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.8);
-        grad.addColorStop(0, this._rgba(color, 0.8));
-        grad.addColorStop(0.5, this._rgba(color, 0.2));
+        // Outer glow (wider, softer)
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 2.5);
+        grad.addColorStop(0, this._rgba(color, 0.9));
+        grad.addColorStop(0.3, this._rgba(color, 0.4));
+        grad.addColorStop(0.6, this._rgba(color, 0.1));
         grad.addColorStop(1, this._rgba(color, 0));
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, s, s);
 
-        // Core
+        // Bright outline ring
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 1.1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+
+        // Core (solid color)
         ctx.fillStyle = this._rgb(color);
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bright center
-        ctx.fillStyle = '#ffffff';
+        // Bright center highlight
+        const innerGrad = ctx.createRadialGradient(cx - radius*0.15, cy - radius*0.15, 0, cx, cy, radius*0.7);
+        innerGrad.addColorStop(0, '#ffffff');
+        innerGrad.addColorStop(0.5, this._rgba(0xffffff, 0.3));
+        innerGrad.addColorStop(1, this._rgba(0xffffff, 0));
+        ctx.fillStyle = innerGrad;
         ctx.beginPath();
-        ctx.arc(cx - radius*0.2, cy - radius*0.2, radius*0.4, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius * 0.7, 0, Math.PI * 2);
         ctx.fill();
 
         this._save(key, canvas);

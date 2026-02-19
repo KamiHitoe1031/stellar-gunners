@@ -50,6 +50,14 @@ class FormationScene extends Phaser.Scene {
                 .setInteractive({ useHandCursor: true })
                 .setStrokeStyle(1, borderColor);
 
+            // Stage thumbnail (if available)
+            const thumbKey = `thumb_stage_1_${stage.stageNum}`;
+            if (this.textures.exists(thumbKey)) {
+                this.add.image(x + 70, y + 50, thumbKey)
+                    .setDisplaySize(158, 118)
+                    .setAlpha(0.35);
+            }
+
             this.add.text(x + 70, y + 15, `1-${stage.stageNum}`, {
                 fontSize: '14px', fontFamily: 'Arial', color: '#888888'
             }).setOrigin(0.5);

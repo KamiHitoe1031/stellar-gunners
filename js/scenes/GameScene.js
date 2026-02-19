@@ -62,8 +62,13 @@ class GameScene extends Phaser.Scene {
         // Effect system
         this.effects = new EffectSystem(this);
 
-        // Obstacle manager
+        // Obstacle manager (procedural fallback)
         this.obstacleManager = new ObstacleManager(this);
+
+        // Collision map manager (image-based)
+        this.collisionMapManager = new CollisionMapManager(this);
+        const collisionKey = `collision_${this.stageId}`;
+        this.collisionData = this.cache.json.get(collisionKey) || null;
 
         // Wave manager
         this.waveManager = new WaveManager(this);
@@ -141,18 +146,27 @@ class GameScene extends Phaser.Scene {
         const area = this.waveManager.getCurrentArea();
         if (!area) return;
 
-        // Clear floor and obstacles
+        // Clear floor, obstacles, and collision map
         this.clearFloor();
         this.obstacleManager.clearAll();
+        this.collisionMapManager.clearAll();
 
-        // Draw themed background
-        this.createFloorForTheme(area.bgTheme);
+        // Try area-specific background, fall back to theme
+        const areaBgKey = `area_bg_${this.stageId}_${areaIndex}`;
+        if (this.textures.exists(areaBgKey)) {
+            this.createFloorFromAreaImage(areaBgKey);
+        } else {
+            this.createFloorForTheme(area.bgTheme);
+        }
 
-        // Generate obstacles for this area
-        this.obstacleManager.generateForArea(area.layout);
-
-        // Setup obstacle collisions
-        this.setupObstacleCollisions();
+        // Try collision map, fall back to procedural obstacles
+        if (this.collisionData && this.collisionMapManager.loadGrid(this.collisionData, areaIndex)) {
+            this.collisionMapManager.createColliders();
+            this.setupCollisionMapCollisions();
+        } else {
+            this.obstacleManager.generateForArea(area.layout);
+            this.setupObstacleCollisions();
+        }
 
         // Reset player positions to center
         this.players.forEach((p, i) => {
@@ -286,6 +300,63 @@ class GameScene extends Phaser.Scene {
         grid.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
         grid.setDepth(1);
         this.floorObjects.push(grid);
+    }
+
+    createFloorFromAreaImage(textureKey) {
+        const bg = this.add.image(FIELD_WIDTH / 2, FIELD_HEIGHT / 2, textureKey);
+        bg.setDisplaySize(FIELD_WIDTH, FIELD_HEIGHT);
+        bg.setDepth(0);
+        this.floorObjects.push(bg);
+
+        // Subtle grid overlay (reduced opacity since bg has visual cues)
+        const grid = this.add.graphics();
+        grid.lineStyle(1, 0x222244, 0.08);
+        for (let x = 0; x <= FIELD_WIDTH; x += COLLISION_CELL_WIDTH) {
+            grid.lineBetween(x, 0, x, FIELD_HEIGHT);
+        }
+        for (let y = 0; y <= FIELD_HEIGHT; y += COLLISION_CELL_HEIGHT) {
+            grid.lineBetween(0, y, FIELD_WIDTH, y);
+        }
+        grid.lineStyle(2, 0x4444aa, 0.2);
+        grid.strokeRect(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+        grid.setDepth(1);
+        this.floorObjects.push(grid);
+    }
+
+    setupCollisionMapCollisions() {
+        const group = this.collisionMapManager.getStaticGroup();
+        if (!group || group.getLength() === 0) return;
+
+        // Players collide with walls
+        this.players.forEach(player => {
+            if (!player.isDead) {
+                this.physics.add.collider(player, group);
+            }
+        });
+
+        // Enemies collide with walls
+        this.physics.add.collider(this.enemyPool.getGroup(), group);
+
+        // Player bullets hit walls
+        this.physics.add.overlap(
+            this.playerBullets.getGroup(), group,
+            (bullet, wall) => {
+                if (!bullet.active) return;
+                if (bullet.piercing) return;
+                bullet.deactivate();
+                if (this.effects) this.effects.hitImpact(bullet.x, bullet.y, 0x888888);
+            }, null, this
+        );
+
+        // Enemy bullets hit walls
+        this.physics.add.overlap(
+            this.enemyBullets.getGroup(), group,
+            (bullet, wall) => {
+                if (!bullet.active) return;
+                if (bullet.piercing) return;
+                bullet.deactivate();
+            }, null, this
+        );
     }
 
     showExitPortal() {
@@ -732,17 +803,28 @@ class GameScene extends Phaser.Scene {
 
         // Spawn enemies
         let spawnIndex = 0;
+        const edges = ['top', 'right', 'bottom', 'left'];
         waveData.forEach(entry => {
             for (let i = 0; i < entry.count; i++) {
                 this.time.delayedCall(spawnIndex * 300, () => {
-                    const margin = 100;
-                    const side = Math.floor(Math.random() * 4);
                     let x, y;
-                    switch (side) {
-                        case 0: x = margin + Math.random() * (FIELD_WIDTH - margin * 2); y = margin; break;
-                        case 1: x = FIELD_WIDTH - margin; y = margin + Math.random() * (FIELD_HEIGHT - margin * 2); break;
-                        case 2: x = margin + Math.random() * (FIELD_WIDTH - margin * 2); y = FIELD_HEIGHT - margin; break;
-                        default: x = margin; y = margin + Math.random() * (FIELD_HEIGHT - margin * 2); break;
+                    const side = Math.floor(Math.random() * 4);
+                    const edgeName = edges[side];
+
+                    // Try collision-aware spawn if collision map is active
+                    const cmSpawn = this.collisionMapManager.getWalkableSpawnPoint(edgeName);
+                    if (cmSpawn) {
+                        x = cmSpawn.x;
+                        y = cmSpawn.y;
+                    } else {
+                        // Fallback: random edge spawn
+                        const margin = 100;
+                        switch (side) {
+                            case 0: x = margin + Math.random() * (FIELD_WIDTH - margin * 2); y = margin; break;
+                            case 1: x = FIELD_WIDTH - margin; y = margin + Math.random() * (FIELD_HEIGHT - margin * 2); break;
+                            case 2: x = margin + Math.random() * (FIELD_WIDTH - margin * 2); y = FIELD_HEIGHT - margin; break;
+                            default: x = margin; y = margin + Math.random() * (FIELD_HEIGHT - margin * 2); break;
+                        }
                     }
                     this.enemyPool.spawn(entry.def, x, y);
                 });
@@ -1102,6 +1184,9 @@ class GameScene extends Phaser.Scene {
     cleanup() {
         if (this._onBlur) {
             window.removeEventListener('blur', this._onBlur);
+        }
+        if (this.collisionMapManager) {
+            this.collisionMapManager.clearAll();
         }
         EventsCenter.off(GameEvents.WAVE_CLEARED, this.onWaveCleared, this);
         EventsCenter.off(GameEvents.AREA_CLEARED, this.onAreaCleared, this);

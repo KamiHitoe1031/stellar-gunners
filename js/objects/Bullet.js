@@ -3,6 +3,7 @@ class Bullet extends Phaser.Physics.Arcade.Sprite {
         super(scene, x, y, texture);
         scene.add.existing(this);
         scene.physics.add.existing(this);
+        this.setDepth(50);
         this.damage = 0;
         this.attribute = '';
         this.isPlayerBullet = true;
