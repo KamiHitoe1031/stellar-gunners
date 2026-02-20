@@ -18,45 +18,49 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from generate_images import API_KEY, DELAY_BETWEEN_REQUESTS
 
-MODEL = "gemini-3-pro-image-preview"
+MODEL = "gemini-2.5-flash"
 ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 STAGES_PATH = PROJECT_ROOT / "assets" / "data" / "stages.json"
 AREA_BG_DIR = PROJECT_ROOT / "assets" / "images" / "area_backgrounds"
 OUTPUT_DIR = PROJECT_ROOT / "assets" / "data" / "collision_maps"
 
-GRID_COLS = 20
-GRID_ROWS = 15
+GRID_COLS = 30
+GRID_ROWS = 22
 
-VISION_PROMPT = f"""You are analyzing a top-down game background image to create a collision map.
+CELL_W = 1200 // GRID_COLS  # 40px
+CELL_H = 900 // GRID_ROWS   # ~41px
 
-The image is a 1200x900px game field. Overlay a {GRID_COLS}x{GRID_ROWS} grid (each cell = 60x60px).
-For each cell, decide if characters can walk through it:
+VISION_PROMPT = f"""Analyze this top-down game background image to create a detailed collision map.
 
-- 0 = WALKABLE: flat ground, roads, paved areas, open floor, corridors, clearings, paths, grass, dirt, any surface characters can walk on
-- 1 = BLOCKED: solid walls, thick pillars, building structures, large immovable objects, water, lava, deep pits, closed doors
+The image is 1200x900px, divided into a {GRID_COLS}-column x {GRID_ROWS}-row grid.
+Each cell is approximately {CELL_W}x{CELL_H} pixels.
 
-IMPORTANT classification rules:
-- Rubble, debris, loose items, thin railings, small objects = 0 (walkable, characters step over them)
-- Partially obstructed areas where most of the cell is open floor = 0 (walkable)
-- Only mark a cell as 1 if the MAJORITY (>60%) of that cell area is truly solid/impassable
-- When in doubt, mark as 0 (walkable). It is better to have slightly too few walls than too many.
+For each cell:
+- 0 = WALKABLE: flat ground, roads, paved areas, open floor, corridors, clearings, paths, grass, dirt
+- 1 = BLOCKED: walls, pillars, building structures, large equipment, vehicles, containers, crates, barrels, thick pipes, control panels, server racks, rubble piles, barricades, fences, railings, water, pits
+
+Classification rules:
+- Small obstacles (crates, barrels, equipment, desks, chairs) that take up most of the cell = 1 (blocked)
+- Narrow passages between obstacles should still be walkable (0) if there's room to walk
+- Mark a cell as 1 if ANY substantial solid object occupies >40% of that cell
+- Roads, paths, corridors, open areas = always 0
+- Look carefully at the visual details - small objects matter at this resolution
 
 Connectivity rules (CRITICAL):
-- ALL walkable (0) cells must form ONE connected region (no isolated pockets)
-- The center area (columns 8-11, rows 6-8) MUST be walkable (player spawn)
-- Every edge (top row, bottom row, left column, right column) must have at least 4 walkable cells
-- There must be a continuous walkable path from the center to every edge
-- Wall density should be 15-30% of total cells (45-90 wall cells out of 300 total)
+- ALL walkable cells must form ONE connected region
+- Center area (columns {GRID_COLS//2-2}-{GRID_COLS//2+2}, rows {GRID_ROWS//2-2}-{GRID_ROWS//2+1}) MUST be walkable
+- Every edge must have at least 4 walkable cells connected to center
+- Wall density: 15-35% of total cells ({int(GRID_ROWS*GRID_COLS*0.15)}-{int(GRID_ROWS*GRID_COLS*0.35)} wall cells out of {GRID_ROWS*GRID_COLS})
 
-Output ONLY valid JSON, no markdown fences, no explanation:
+Output ONLY valid JSON, no markdown, no explanation:
 {{"grid": [[0,0,0,...], [0,0,0,...], ...]}}
 
 Exactly {GRID_ROWS} rows, each with exactly {GRID_COLS} values (0 or 1).
-Row 0 = top of image, row {GRID_ROWS - 1} = bottom. Column 0 = left, column {GRID_COLS - 1} = right."""
+Row 0 = top, row {GRID_ROWS-1} = bottom. Column 0 = left, column {GRID_COLS-1} = right."""
 
 
-def analyze_image(image_path, retry=2):
+def analyze_image(image_path, retry=3):
     """Send image to Gemini Vision and get collision grid as JSON."""
     import requests
 
@@ -83,12 +87,13 @@ def analyze_image(image_path, retry=2):
 
     for attempt in range(retry + 1):
         try:
-            print(f"  Analyzing: {Path(image_path).name} (attempt {attempt + 1})...")
-            response = requests.post(ENDPOINT, headers=headers, json=payload, timeout=120)
+            print(f"  Analyzing: {Path(image_path).name} (attempt {attempt + 1})...", flush=True)
+            response = requests.post(ENDPOINT, headers=headers, json=payload, timeout=180)
 
             if response.status_code == 429:
-                print(f"  Rate limited. Waiting 60s...")
-                time.sleep(60)
+                wait_time = 90 * (attempt + 1)  # 90s, 180s, 270s, 360s
+                print(f"  Rate limited. Waiting {wait_time}s...", flush=True)
+                time.sleep(wait_time)
                 continue
 
             response.raise_for_status()
@@ -141,18 +146,18 @@ def analyze_image(image_path, retry=2):
                     else:
                         grid[i] = row[:GRID_COLS]
 
-            print(f"  OK: Grid extracted ({GRID_ROWS}x{GRID_COLS})")
+            print(f"  OK: Grid extracted ({GRID_ROWS}x{GRID_COLS})", flush=True)
             return grid
 
         except json.JSONDecodeError as e:
-            print(f"  JSON parse error: {e}")
-            print(f"  Raw text: {text_response[:300]}")
+            print(f"  JSON parse error: {e}", flush=True)
+            print(f"  Raw text: {text_response[:300]}", flush=True)
             if attempt < retry:
-                time.sleep(10)
+                time.sleep(15)
         except Exception as e:
-            print(f"  Error: {e}")
+            print(f"  Error: {e}", flush=True)
             if attempt < retry:
-                time.sleep(10)
+                time.sleep(15)
 
     return None
 
@@ -194,12 +199,14 @@ def carve_path(grid, from_r, from_c, to_r, to_c):
 def validate_and_fix_grid(grid):
     """Ensure grid is playable: center walkable, edges reachable, density reasonable."""
     # 1. Force center area to be walkable (player spawn)
-    for r in range(6, 9):
-        for c in range(8, 12):
-            grid[r][c] = 0
+    center_r = GRID_ROWS // 2
+    center_c = GRID_COLS // 2
+    for r in range(center_r - 2, center_r + 2):
+        for c in range(center_c - 3, center_c + 3):
+            if 0 <= r < GRID_ROWS and 0 <= c < GRID_COLS:
+                grid[r][c] = 0
 
     # 2. Flood fill from center
-    center_r, center_c = 7, 10
     reachable = flood_fill(grid, center_r, center_c)
 
     # 3. Ensure each edge has reachable walkable cells
@@ -285,18 +292,18 @@ def generate_collision_maps(target_stages=None):
                 })
                 continue
 
-            print(f"\n  Area {area_idx}: {area_name}")
+            print(f"\n  Area {area_idx}: {area_name}", flush=True)
             grid = analyze_image(str(image_path))
 
             if grid is None:
-                print(f"  Using default open grid for area {area_idx}")
+                print(f"  FAILED: Using default open grid for area {area_idx}", flush=True)
                 grid = [[0] * GRID_COLS for _ in range(GRID_ROWS)]
             else:
                 # Post-process to ensure playability
                 grid = validate_and_fix_grid(grid)
                 wall_count = sum(cell for row in grid for cell in row)
                 total = GRID_ROWS * GRID_COLS
-                print(f"  Wall density: {wall_count}/{total} ({wall_count/total*100:.1f}%)")
+                print(f"  Wall density: {wall_count}/{total} ({wall_count/total*100:.1f}%)", flush=True)
 
             collision_data["areas"].append({
                 "areaIndex": area_idx,
@@ -304,7 +311,8 @@ def generate_collision_maps(target_stages=None):
                 "grid": grid
             })
 
-            time.sleep(DELAY_BETWEEN_REQUESTS)
+            # Respect rate limit: 15s between calls
+            time.sleep(15)
 
         # Save collision data for this stage
         with open(output_path, 'w', encoding='utf-8') as f:
@@ -316,7 +324,7 @@ def main():
     print("=" * 60)
     print("Stellar Gunners - Collision Map Generator")
     print(f"API Key: {API_KEY[:10]}...")
-    print(f"Grid: {GRID_COLS}x{GRID_ROWS} ({GRID_COLS * 60}x{GRID_ROWS * 60}px)")
+    print(f"Grid: {GRID_COLS}x{GRID_ROWS} ({CELL_W}x{CELL_H}px per cell)")
     print("=" * 60)
 
     target_stages = None
