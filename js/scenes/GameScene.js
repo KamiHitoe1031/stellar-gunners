@@ -867,52 +867,69 @@ class GameScene extends Phaser.Scene {
         this.isCleared = true;
         this.destroyExitPortal();
 
+        // Stop all player movement immediately
+        this.players.forEach(p => {
+            if (p.body) p.setVelocity(0, 0);
+        });
+
         this.waveText.setText('STAGE CLEAR!');
         this.waveText.setAlpha(1);
         this.waveText.setColor('#00ff00');
 
+        // Deactivate all enemies and bullets
+        this.enemyPool.reset();
+        this.playerBullets.getGroup().getChildren().forEach(b => { if (b.deactivate) b.deactivate(); });
+        this.enemyBullets.getGroup().getChildren().forEach(b => { if (b.deactivate) b.deactivate(); });
+
         this.time.delayedCall(2000, () => {
-            const timeInSeconds = Math.floor(this.elapsedTime / 1000);
-            const timeLimit = this.stageData.timeLimit;
-            let stars = 1;
-            if (this.partyDeaths === 0) stars = 2;
-            if (this.partyDeaths === 0 && timeInSeconds <= timeLimit) stars = 3;
+            try {
+                const timeInSeconds = Math.floor(this.elapsedTime / 1000);
+                const timeLimit = this.stageData.timeLimit || 999;
+                let stars = 1;
+                if (this.partyDeaths === 0) stars = 2;
+                if (this.partyDeaths === 0 && timeInSeconds <= timeLimit) stars = 3;
 
-            const drops = DropSystem.generateStageDrops(this.stageData);
-            const save = SaveManager.load();
-            const isFirstClear = !save.progress.clearedStages[this.stageId];
-            const firstClearRewards = isFirstClear ? DropSystem.generateFirstClearRewards(this.stageData) : [];
+                const drops = DropSystem.generateStageDrops(this.stageData);
+                const save = SaveManager.load();
+                const isFirstClear = !save.progress.clearedStages[this.stageId];
+                const firstClearRewards = isFirstClear ? DropSystem.generateFirstClearRewards(this.stageData) : [];
 
-            SaveManager.markStageCleared(this.stageId, stars);
+                SaveManager.markStageCleared(this.stageId, stars);
 
-            const allWeapons = this.cache.json.get('weapons');
-            drops.forEach(d => {
-                if (d.type === 'credit') SaveManager.addCredits(d.amount);
-                if (d.type === 'weapon' && allWeapons) {
-                    const candidates = allWeapons.filter(w => w.rarity <= (d.rarity || 1));
-                    if (candidates.length > 0) {
-                        const wpn = candidates[Math.floor(Math.random() * candidates.length)];
-                        TransformPotSystem.addToInventory('weapon', wpn);
-                        d.weaponName = wpn.name;
+                const allWeapons = this.cache.json.get('weapons');
+                drops.forEach(d => {
+                    if (d.type === 'credit') SaveManager.addCredits(d.amount);
+                    if (d.type === 'weapon' && allWeapons) {
+                        const candidates = allWeapons.filter(w => w.rarity <= (d.rarity || 1));
+                        if (candidates.length > 0) {
+                            const wpn = candidates[Math.floor(Math.random() * candidates.length)];
+                            TransformPotSystem.addToInventory('weapon', wpn);
+                            d.weaponName = wpn.name;
+                        }
                     }
-                }
-            });
-            firstClearRewards.forEach(r => {
-                if (r.type === 'gems') SaveManager.addGems(r.amount);
-            });
+                });
+                firstClearRewards.forEach(r => {
+                    if (r.type === 'gems') SaveManager.addGems(r.amount);
+                });
 
-            this.scene.stop('UIScene');
-            this.scene.start('ResultScene', {
-                stageData: this.stageData,
-                stars,
-                drops,
-                firstClearRewards,
-                isFirstClear,
-                timeInSeconds,
-                totalDamage: this.totalDamageDealt,
-                partyDeaths: this.partyDeaths,
-                partyIds: this.partyData.map(p => p.id)
-            });
+                this.scene.stop('UIScene');
+                this.scene.start('ResultScene', {
+                    stageData: this.stageData,
+                    stars,
+                    drops,
+                    firstClearRewards,
+                    isFirstClear,
+                    timeInSeconds,
+                    totalDamage: this.totalDamageDealt,
+                    partyDeaths: this.partyDeaths,
+                    partyIds: this.partyData.map(p => p.id)
+                });
+            } catch (err) {
+                console.error('Error transitioning to ResultScene:', err);
+                // Failsafe: go to menu if ResultScene fails
+                this.scene.stop('UIScene');
+                this.scene.start('MenuScene');
+            }
         });
     }
 
@@ -988,7 +1005,15 @@ class GameScene extends Phaser.Scene {
     // ===== Main Loop =====
 
     update(time, delta) {
-        if (this.isPaused || this.isGameOver || this.isCleared) return;
+        if (this.isPaused || this.isGameOver || this.isCleared) {
+            // Ensure all players stop moving when game is paused/over/cleared
+            this.players.forEach(p => {
+                if (p.body && (p.body.velocity.x !== 0 || p.body.velocity.y !== 0)) {
+                    p.setVelocity(0, 0);
+                }
+            });
+            return;
+        }
 
         this.elapsedTime += delta;
 
