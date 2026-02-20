@@ -28,26 +28,32 @@ OUTPUT_DIR = PROJECT_ROOT / "assets" / "data" / "collision_maps"
 GRID_COLS = 20
 GRID_ROWS = 15
 
-VISION_PROMPT = f"""Analyze this top-down game background image and create a collision map grid.
+VISION_PROMPT = f"""You are analyzing a top-down game background image to create a collision map.
 
-The image represents a 1200x900 pixel game field divided into a {GRID_COLS}-column by {GRID_ROWS}-row grid.
-Each cell is 60x60 pixels.
+The image is a 1200x900px game field. Overlay a {GRID_COLS}x{GRID_ROWS} grid (each cell = 60x60px).
+For each cell, decide if characters can walk through it:
 
-For each cell, determine:
-- 0 = walkable floor (characters can move through): open roads, corridors, clear floor areas, paths
-- 1 = wall/obstacle (solid, blocks movement): walls, pillars, rubble piles, heavy equipment, building structures, raised surfaces
+- 0 = WALKABLE: flat ground, roads, paved areas, open floor, corridors, clearings, paths, grass, dirt, any surface characters can walk on
+- 1 = BLOCKED: solid walls, thick pillars, building structures, large immovable objects, water, lava, deep pits, closed doors
 
-Rules:
-- The CENTER of the grid (columns 8-11, rows 6-8) MUST be 0 (walkable) - this is the player spawn area.
-- Each edge (top row, bottom row, left column, right column) must have at least 3 walkable cells.
-- Walls should generally be 20-35% of total cells (not too dense, not too empty).
-- Be accurate to what you see in the image - lighter flat areas are walkable, darker raised structures are walls.
+IMPORTANT classification rules:
+- Rubble, debris, loose items, thin railings, small objects = 0 (walkable, characters step over them)
+- Partially obstructed areas where most of the cell is open floor = 0 (walkable)
+- Only mark a cell as 1 if the MAJORITY (>60%) of that cell area is truly solid/impassable
+- When in doubt, mark as 0 (walkable). It is better to have slightly too few walls than too many.
 
-Output ONLY valid JSON with this exact format, no markdown fences, no explanation:
+Connectivity rules (CRITICAL):
+- ALL walkable (0) cells must form ONE connected region (no isolated pockets)
+- The center area (columns 8-11, rows 6-8) MUST be walkable (player spawn)
+- Every edge (top row, bottom row, left column, right column) must have at least 4 walkable cells
+- There must be a continuous walkable path from the center to every edge
+- Wall density should be 15-30% of total cells (45-90 wall cells out of 300 total)
+
+Output ONLY valid JSON, no markdown fences, no explanation:
 {{"grid": [[0,0,0,...], [0,0,0,...], ...]}}
 
-The grid array must have exactly {GRID_ROWS} rows, each row must have exactly {GRID_COLS} values (0 or 1).
-Row 0 is the top of the image, row 14 is the bottom. Column 0 is left, column 19 is right."""
+Exactly {GRID_ROWS} rows, each with exactly {GRID_COLS} values (0 or 1).
+Row 0 = top of image, row {GRID_ROWS - 1} = bottom. Column 0 = left, column {GRID_COLS - 1} = right."""
 
 
 def analyze_image(image_path, retry=2):

@@ -804,20 +804,22 @@ class GameScene extends Phaser.Scene {
         // Spawn enemies
         let spawnIndex = 0;
         const edges = ['top', 'right', 'bottom', 'left'];
+        const hasCollisionMap = this.collisionMapManager.hasGrid();
         waveData.forEach(entry => {
             for (let i = 0; i < entry.count; i++) {
                 this.time.delayedCall(spawnIndex * 300, () => {
+                    if (this.isGameOver || this.isCleared) return;
                     let x, y;
                     const side = Math.floor(Math.random() * 4);
                     const edgeName = edges[side];
 
-                    // Try collision-aware spawn if collision map is active
-                    const cmSpawn = this.collisionMapManager.getWalkableSpawnPoint(edgeName);
-                    if (cmSpawn) {
+                    if (hasCollisionMap) {
+                        // Collision map active: always use connected spawn points
+                        const cmSpawn = this.collisionMapManager.getWalkableSpawnPoint(edgeName);
                         x = cmSpawn.x;
                         y = cmSpawn.y;
                     } else {
-                        // Fallback: random edge spawn
+                        // No collision map: random edge spawn
                         const margin = 100;
                         switch (side) {
                             case 0: x = margin + Math.random() * (FIELD_WIDTH - margin * 2); y = margin; break;

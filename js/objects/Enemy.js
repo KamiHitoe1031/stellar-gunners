@@ -15,6 +15,11 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.fireTimer = 0;
         this.isDead = false;
         this.hpBar = null;
+        // Stuck detection
+        this._stuckTimer = 0;
+        this._lastX = 0;
+        this._lastY = 0;
+        this._wallSlideAngle = 0;
     }
 
     init(enemyData) {
@@ -33,6 +38,10 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
         this.fireTimer = 1000 + Math.random() * 2000;
         this.animState = 'idle';
         this.spriteKey = enemyData.spriteKey;
+        this._stuckTimer = 0;
+        this._lastX = this.x;
+        this._lastY = this.y;
+        this._wallSlideAngle = 0;
 
         this.setActive(true);
         this.setVisible(true);
@@ -220,12 +229,66 @@ class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     moveToward(target, speed) {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
-        this.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+
+        // Check if we're stuck (body blocked by wall)
+        const body = this.body;
+        if (body && (body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down)) {
+            // Wall-slide: try perpendicular direction to get around obstacle
+            let slideX = Math.cos(angle) * speed;
+            let slideY = Math.sin(angle) * speed;
+
+            if (body.blocked.left || body.blocked.right) {
+                // Blocked horizontally → move vertically only
+                slideX = 0;
+                slideY = (target.y > this.y ? 1 : -1) * speed;
+            }
+            if (body.blocked.up || body.blocked.down) {
+                // Blocked vertically → move horizontally only
+                slideY = 0;
+                slideX = (target.x > this.x ? 1 : -1) * speed;
+            }
+            // If blocked on both axes, try a jitter to escape
+            if ((body.blocked.left || body.blocked.right) && (body.blocked.up || body.blocked.down)) {
+                const jitter = (Math.random() - 0.5) * 2;
+                slideX = jitter * speed;
+                slideY = jitter * speed;
+            }
+
+            this.setVelocity(slideX, slideY);
+        } else {
+            this.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+        }
+
         if (this.animState !== 'hit' && this.animState !== 'death') {
             this.playEnemyAnim('walk');
         }
         // Flip based on direction
         this.setFlipX(Math.cos(angle) < 0);
+    }
+
+    /**
+     * Called each frame from EnemyPool.updateAll to detect stuck enemies.
+     * Returns true if enemy has been stuck for too long and should be teleported.
+     */
+    checkStuck(delta) {
+        if (this.isDead || !this.active) return false;
+
+        const dx = Math.abs(this.x - this._lastX);
+        const dy = Math.abs(this.y - this._lastY);
+        const moved = dx + dy;
+
+        if (moved < 2) {
+            // Barely moved
+            this._stuckTimer += delta;
+        } else {
+            this._stuckTimer = 0;
+        }
+
+        this._lastX = this.x;
+        this._lastY = this.y;
+
+        // Stuck for 4+ seconds
+        return this._stuckTimer > 4000;
     }
 
     shootAt(player, bulletPool) {

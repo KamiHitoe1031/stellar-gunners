@@ -74,8 +74,37 @@ class EnemyPool {
         this.pool.forEach(enemy => {
             if (enemy.active && !enemy.isDead) {
                 enemy.updateAI(player, bulletPool, delta);
+
+                // Check if enemy is stuck against walls
+                if (enemy.checkStuck(delta)) {
+                    this._teleportStuckEnemy(enemy, player);
+                }
             }
         });
+    }
+
+    _teleportStuckEnemy(enemy, player) {
+        if (!player || player.isDead) return;
+        const cmm = this.scene.collisionMapManager;
+        if (cmm && cmm.hasGrid()) {
+            // Find walkable position near the player
+            const offsetAngle = Math.random() * Math.PI * 2;
+            const offsetDist = 150 + Math.random() * 100;
+            const targetX = player.x + Math.cos(offsetAngle) * offsetDist;
+            const targetY = player.y + Math.sin(offsetAngle) * offsetDist;
+            const pos = cmm.getNearestWalkablePosition(targetX, targetY);
+            enemy.setPosition(pos.x, pos.y);
+        } else {
+            // No collision map: teleport near player
+            const offsetAngle = Math.random() * Math.PI * 2;
+            const offsetDist = 150 + Math.random() * 100;
+            enemy.setPosition(
+                player.x + Math.cos(offsetAngle) * offsetDist,
+                player.y + Math.sin(offsetAngle) * offsetDist
+            );
+        }
+        enemy._stuckTimer = 0;
+        console.log('Teleported stuck enemy to near player');
     }
 
     reset() {
